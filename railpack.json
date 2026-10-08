@@ -2,15 +2,16 @@
   "$schema": "https://schema.railpack.com",
   "steps": {
     "install": {
+      "inputs": [{ "local": true, "include": "." }],
       "commands": [
         "corepack enable",
         "pnpm install --frozen-lockfile",
-        "pnpm --filter backend db:generate",
-        "pnpm --filter backend build"
+        "pnpm --filter @medcore/backend db:generate",
+        "pnpm --filter @medcore/backend build"
       ]
     }
   },
   "deploy": {
-    "startCommand": "pnpm --filter backend db:deploy && cd apps/backend && node dist/src/main"
+    "startCommand": "pnpm --filter @medcore/backend db:deploy && cd apps/backend && node dist/src/main"
   }
 }
