@@ -31,13 +31,23 @@ export class PaymentsService {
     }
   }
 
+  /** Standard Checkout can be initiated as soon as key id + secret are present. */
   get configured(): boolean {
-    return !!this.client && !!process.env.RAZORPAY_WEBHOOK_SECRET;
+    return !!this.client;
+  }
+
+  /** Whether incoming webhooks can be verified (a reconciliation safety net, not a checkout prerequisite). */
+  get webhookConfigured(): boolean {
+    return !!process.env.RAZORPAY_WEBHOOK_SECRET;
   }
 
   /** Public-safe config for the frontend checkout (never the secret). */
   config() {
-    return { configured: this.configured, keyId: process.env.RAZORPAY_KEY_ID || '' };
+    return {
+      configured: this.configured,
+      webhookConfigured: this.webhookConfigured,
+      keyId: process.env.RAZORPAY_KEY_ID || '',
+    };
   }
 
   /** Create a Razorpay order for the invoice's outstanding balance. */
