@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { DashboardSidebar } from '@/components/shared/dashboard-sidebar';
@@ -10,14 +10,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+
+  // zustand/persist restores the session from localStorage AFTER the first
+  // render, so deciding before then would bounce an already signed-in user
+  // back to the login screen on a hard refresh or a direct dashboard URL.
+  useEffect(() => {
+    setHydrated(useAuthStore.persist.hasHydrated());
+    const unsubscribe = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (hydrated && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated || !user) {
+  if (!hydrated || !isAuthenticated || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full" />
