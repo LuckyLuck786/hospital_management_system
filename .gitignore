@@ -38,3 +38,6 @@ docker-volumes/
 
 .vercel
 .env*
+
+# Fully self-test fixtures / browser binaries
+.cache/

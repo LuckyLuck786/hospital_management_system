@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start": "pnpm --filter @medcore/backend db:deploy && pnpm --filter @medcore/backend db:seed && pnpm --filter @medcore/backend start:prod",
-    "build": "pnpm --filter @medcore/backend db:generate && pnpm --filter @medcore/backend build && pnpm --filter @medcore/frontend build",
+    "build": "pnpm --filter @medcore/backend db:generate && pnpm --filter @medcore/backend build && pnpm --filter @medcore/frontend build && pnpm --filter @medcore/backend exec puppeteer browsers install chrome",
     "dev": "pnpm -r dev",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
