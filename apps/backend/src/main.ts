@@ -16,6 +16,11 @@ async function bootstrap() {
   // verified against the exact bytes that were posted.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
+  // We run behind a reverse proxy (Vercel → Railway). Trust the first hop so
+  // req.ip and express-rate-limit read the real client from X-Forwarded-For
+  // instead of logging a misconfiguration warning and bucketing everyone as one IP.
+  app.set('trust proxy', 1);
+
   app.use(helmet());
   app.use(compression());
   app.use(cookieParser());

@@ -41,6 +41,34 @@ async function upsertUser(data: {
 async function main() {
   console.log('🌱 Seeding MedCore HMS...');
 
+  // Idempotency guard. This seed runs on every boot (the root "start" script
+  // chains db:seed before start:prod), and the transactional block below uses
+  // create(...) — so re-running would append another two weeks of appointments,
+  // invoices and lab orders on every restart. Skip if the DB already has data;
+  // set SEED_RESET=1 to intentionally wipe the generated demo data and rebuild.
+  if (process.env.SEED_RESET === '1') {
+    console.log('♻️  SEED_RESET=1 — clearing generated demo data before reseeding...');
+    await prisma.payment.deleteMany();
+    await prisma.invoiceItem.deleteMany();
+    await prisma.invoice.deleteMany();
+    await prisma.labResult.deleteMany();
+    await prisma.labTest.deleteMany();
+    await prisma.labOrder.deleteMany();
+    await prisma.prescriptionItem.deleteMany();
+    await prisma.prescription.deleteMany();
+    await prisma.medicalRecordAttachment.deleteMany();
+    await prisma.medicalRecord.deleteMany();
+    await prisma.appointment.deleteMany();
+  } else {
+    const existingAppointments = await prisma.appointment.count();
+    if (existingAppointments > 0) {
+      console.log(
+        `⏭️  Already seeded (${existingAppointments} appointments present) — skipping. Set SEED_RESET=1 to rebuild.`,
+      );
+      return;
+    }
+  }
+
   // ══════════════════════════════════════════════════════════
   // 1. HOSPITALS
   // ══════════════════════════════════════════════════════════
@@ -544,7 +572,12 @@ async function main() {
         if (usedSlots.has(slotKey)) continue;
         usedSlots.add(slotKey);
 
-        const patient = patients[Math.floor(Math.random() * patients.length)];
+        // Keep each appointment inside the doctor's own hospital so a patient's
+        // records never land under a different tenant (which the tenant-isolation
+        // checks would then forbid the patient from opening).
+        const hospitalPatients = patients.filter((p) => p.hospitalId === doctor.hospitalId);
+        const patient =
+          hospitalPatients[Math.floor(Math.random() * hospitalPatients.length)] || patients[0];
         const isPast = dayOffset < 0;
         const isToday = dayOffset === 0;
         const status: AppointmentStatus = isPast
