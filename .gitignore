@@ -35,3 +35,6 @@ coverage/
 
 # Docker volumes
 docker-volumes/
+
+.vercel
+.env*
