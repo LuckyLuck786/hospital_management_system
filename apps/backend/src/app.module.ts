@@ -22,12 +22,14 @@ import { ChannelsModule } from './channels/channels.module';
 import { JobsModule } from './jobs/jobs.module';
 import { PdfModule } from './pdf/pdf.module';
 import { PaymentsModule } from './payments/payments.module';
+import { StorageModule } from './storage/storage.module';
 import { PrismaModule } from './common/prisma.module';
 import { RedisModule } from './common/redis.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
 @Module({
   imports: [
@@ -39,6 +41,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     RedisModule,
     RealtimeModule,
     ChannelsModule,
+    StorageModule,
     JobsModule,
     PdfModule,
     PaymentsModule,
@@ -63,6 +66,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
   ],
 })

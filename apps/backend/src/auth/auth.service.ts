@@ -5,6 +5,8 @@ import { RedisService } from '../common/redis.service';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { UserRole } from '@prisma/client';
+import { EmailService } from '../channels/email.service';
+import { SmsService } from '../channels/sms.service';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +14,8 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private redis: RedisService,
+    private email: EmailService,
+    private sms: SmsService,
   ) {}
 
   async register(data: {
@@ -79,7 +83,11 @@ export class AuthService {
       }
     }
 
-    console.log(`OTP for ${data.email}: ${otp}`);
+    await this.email.send(
+      data.email,
+      'Verify your MedCore HMS email',
+      `<p>Hello ${data.firstName},</p><p>Your verification code is <b>${otp}</b>. It expires in 15 minutes.</p>`,
+    );
 
     return {
       message: 'Registration successful. Please verify your email.',
@@ -207,6 +215,33 @@ export class AuthService {
     });
 
     return { message: 'Email verified successfully' };
+  }
+
+  async sendPhoneOtp(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+    if (!user.phone) throw new BadRequestException('No phone number on file');
+    const otp = this.generateOtp();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { phoneOtp: otp, phoneOtpExpiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+    });
+    await this.sms.send(user.phone, `Your MedCore HMS verification code is ${otp}. It expires in 10 minutes.`);
+    return { message: 'Verification code sent' };
+  }
+
+  async verifyPhone(userId: string, otp: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+    if (user.isPhoneVerified) return { message: 'Phone already verified' };
+    if (!user.phoneOtp || user.phoneOtp !== otp || !user.phoneOtpExpiresAt || user.phoneOtpExpiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { isPhoneVerified: true, phoneOtp: null, phoneOtpExpiresAt: null },
+    });
+    return { message: 'Phone verified successfully' };
   }
 
   async forgotPassword(email: string) {

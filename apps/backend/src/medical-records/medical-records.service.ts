@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { UserRole } from '@prisma/client';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class MedicalRecordsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private storage: StorageService) {}
 
   /** Resolve the Patient profile belonging to the given user (if any). */
   private async findPatientByUserId(userId: string) {
@@ -104,6 +105,30 @@ export class MedicalRecordsService {
     }
 
     return record;
+  }
+
+  async addAttachment(id: string, file: Express.Multer.File, user: any, description?: string) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    const record = await this.findById(id, user); // enforces tenant + patient scoping
+    const { key, size, contentType } = await this.storage.upload(file, `records/${record.hospitalId}/${record.id}`);
+    return this.prisma.medicalRecordAttachment.create({
+      data: {
+        medicalRecordId: record.id,
+        fileName: file.originalname.slice(0, 200),
+        fileUrl: key,
+        fileType: contentType,
+        fileSize: size,
+        uploadedById: user.id,
+        description,
+      },
+    });
+  }
+
+  async attachmentUrl(id: string, attachmentId: string, user: any) {
+    const record = await this.findById(id, user);
+    const att = record.attachments.find((a) => a.id === attachmentId);
+    if (!att) throw new NotFoundException('Attachment not found');
+    return { url: await this.storage.signedUrl(att.fileUrl), fileName: att.fileName };
   }
 
   async create(hospitalId: string, userId: string, data: any) {

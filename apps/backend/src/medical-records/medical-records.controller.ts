@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { MAX_UPLOAD_BYTES } from '../storage/storage.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { MedicalRecordsService } from './medical-records.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -17,6 +19,25 @@ export class MedicalRecordsController {
   @ApiOperation({ summary: 'Get medical records by patient ID' })
   async findByPatient(@Param('patientId') patientId: string, @CurrentUser() user: any) {
     return this.medicalRecordsService.findByPatient(patientId, user);
+  }
+
+  @Post(':id/attachments')
+  @Roles(UserRole.DOCTOR, UserRole.NURSE)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
+  @ApiOperation({ summary: 'Attach a file (PDF/image, max 20 MB) to a medical record' })
+  async addAttachment(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('description') description: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.medicalRecordsService.addAttachment(id, file, user, description);
+  }
+
+  @Get(':id/attachments/:attachmentId/url')
+  @ApiOperation({ summary: 'Get a short-lived signed download URL for an attachment' })
+  async attachmentUrl(@Param('id') id: string, @Param('attachmentId') attachmentId: string, @CurrentUser() user: any) {
+    return this.medicalRecordsService.attachmentUrl(id, attachmentId, user);
   }
 
   @Get(':id')

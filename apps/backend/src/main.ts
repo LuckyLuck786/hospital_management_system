@@ -7,12 +7,29 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { allowedOrigins } from './common/cors';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { PrismaClientExceptionFilter } from './common/filters/prisma-exception.filter';
 
 async function bootstrap() {
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV,
+      tracesSampleRate: 0.1,
+      beforeSend(event) {
+        // never ship request bodies/cookies (may hold PHI, passwords, OTPs)
+        if (event.request) {
+          delete event.request.data;
+          delete event.request.cookies;
+        }
+        return event;
+      },
+    });
+  }
+
   // rawBody: true exposes req.rawBody so Razorpay webhook signatures can be
   // verified against the exact bytes that were posted.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
@@ -31,6 +48,16 @@ async function bootstrap() {
       windowMs: 15 * 60 * 1000,
       max: 1000,
       message: 'Too many requests from this IP, please try again later.',
+    }),
+  );
+
+  // PRD §10: 100 requests / 15 min per IP on auth endpoints
+  app.use(
+    '/api/auth',
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 100,
+      message: 'Too many authentication attempts, please try again later.',
     }),
   );
 

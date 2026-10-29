@@ -1,5 +1,6 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { redact } from '../sanitize';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -22,12 +23,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       path: request.url,
     };
 
-    const sanitizedRequest = {
-      ...request.body,
-      password: undefined,
-      token: undefined,
-      otp: undefined,
-    };
+    const sanitizedRequest = redact(request.body);
 
     console.error(`[${request.method}] ${request.url} - ${status}`, {
       error: errorResponse.error,

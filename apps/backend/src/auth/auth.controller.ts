@@ -55,6 +55,22 @@ export class AuthController {
     return this.authService.verifyEmail(dto.email, dto.otp);
   }
 
+  @Post('send-phone-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Send an SMS OTP to the signed-in user\'s phone' })
+  async sendPhoneOtp(@CurrentUser() user: any) {
+    return this.authService.sendPhoneOtp(user.id);
+  }
+
+  @Post('verify-phone')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify phone with SMS OTP' })
+  async verifyPhone(@CurrentUser() user: any, @Body() dto: any) {
+    return this.authService.verifyPhone(user.id, dto.otp);
+  }
+
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
