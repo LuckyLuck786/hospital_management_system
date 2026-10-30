@@ -17,12 +17,14 @@ A ✓ for every role means any signed-in user passes the guard. Services then ap
 | `GET /api/appointments/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/appointments` |  | ✓ |  |  | ✓ |  |  |  | ✓ |
 | `PATCH /api/appointments/:id/status` |  | ✓ | ✓ |  | ✓ |  |  |  |  |
+| `GET /api/audit-logs` | ✓ | ✓ |  |  |  |  |  |  |  |
 | `POST /api/auth/register` | public |  |  |  |  |  |  |  |  |
 | `POST /api/auth/login` | public |  |  |  |  |  |  |  |  |
 | `POST /api/auth/refresh` | public |  |  |  |  |  |  |  |  |
 | `POST /api/auth/verify-email` | public |  |  |  |  |  |  |  |  |
 | `POST /api/auth/send-phone-otp` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/auth/verify-phone` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/auth/resend-verification` | public |  |  |  |  |  |  |  |  |
 | `POST /api/auth/forgot-password` | public |  |  |  |  |  |  |  |  |
 | `POST /api/auth/reset-password` | public |  |  |  |  |  |  |  |  |
 | `POST /api/auth/logout` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -67,6 +69,8 @@ A ✓ for every role means any signed-in user passes the guard. Services then ap
 | `GET /api/patients/:id` | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  | ✓ |
 | `GET /api/patients/:id/vaccinations` | ✓ | ✓ | ✓ | ✓ |  |  |  |  | ✓ |
 | `POST /api/patients/:id/vaccinations` |  |  | ✓ | ✓ |  |  |  |  |  |
+| `GET /api/patients/:id/vitals` | ✓ | ✓ | ✓ | ✓ |  |  |  |  | ✓ |
+| `POST /api/patients/:id/vitals` |  |  | ✓ | ✓ |  |  |  |  |  |
 | `PATCH /api/patients/:id/family-history` |  |  | ✓ | ✓ |  |  |  |  |  |
 | `GET /api/payments/config` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/payments/orders/:invoiceId` | ✓ | ✓ |  |  | ✓ |  |  | ✓ | ✓ |
@@ -88,3 +92,6 @@ A ✓ for every role means any signed-in user passes the guard. Services then ap
 | `POST /api/users` | ✓ | ✓ |  |  |  |  |  |  |  |
 | `PATCH /api/users/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `DELETE /api/users/:id` | ✓ | ✓ |  |  |  |  |  |  |  |
+| `GET /api/wards` | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |
+| `POST /api/wards/rooms` | ✓ | ✓ |  |  |  |  |  |  |  |
+| `PATCH /api/wards/rooms/:id/occupancy` | ✓ | ✓ |  | ✓ |  |  |  |  |  |

@@ -359,9 +359,42 @@ Use **test/development keys** first; never commit real secrets.
 - **CI** — `.github/workflows/ci.yml`: backend typecheck + e2e (Postgres + Redis services)
   with coverage, frontend typecheck + production build, on every push and PR to `main`.
 
+## Phase 7 — Product polish, new workspaces & security review (implemented)
+
+**New screens**
+- **Landing page** — product overview, feature grid, visit workflow, role cards, security section, live API-docs link.
+- **Sign-in** — split-screen design with one-click demo accounts for all nine roles; **forgot password**,
+  **reset password** (emailed link) and **verify email** (OTP + resend) screens.
+- **Patient chart** (`/dashboard/patients/[id]`) — profile, allergies, insurance, family-history toggles,
+  vitals trend chart, medical records with file attachments, vaccination timeline and visit history.
+- **Nurse station** — triage queue with one-click *Record vitals* (BMI auto-calculated); doctors' consultation
+  form pre-fills from today's triage.
+- **Wards & Beds** — occupancy per department and room, admit/discharge buttons, add rooms; admin dashboard
+  gets bed KPIs and a department occupancy heat map.
+- **Doctor schedule editor** — weekly hours and slot length per day; doctor dashboard gets a follow-up mini calendar.
+- **Pharmacy inventory** — search, low-stock and expiring filters, add medicines, receive stock batches.
+- **Audit log viewer** — filter by action, expand any event to see the redacted request body.
+- **Settings** — editable profile and SMS phone verification for every role.
+- **Finance** — 30-day collections chart, invoice status breakdown, CSV export.
+- Responsive layout with a mobile navigation drawer; per-role navigation fixed (no more links to pages a role cannot open).
+
+**Security fixes found during the walkthrough**
+- `PATCH /users/:id` let any signed-in user edit any account (and returned the password hash) — now self-or-admin only, safe fields returned.
+- `GET/DELETE /users/:id` had no hospital check — now scoped.
+- `PATCH /doctors/:id/schedule` let any doctor overwrite any schedule — now own schedule / same-hospital admin, with validation.
+- `POST /medicines/:id/batches` accepted other hospitals' medicines and bad quantities — now scoped and validated.
+- Password-reset tokens were printed to the server log instead of emailed — now emailed as a link.
+- Admin "Revenue today" summed every hospital's payments — now scoped to the caller's hospital.
+- Super Admin dashboards filtered on an empty hospital and showed zeros — now platform-wide.
+
+**New API**: `GET|POST /patients/:id/vitals`, `GET /wards`, `POST /wards/rooms`,
+`PATCH /wards/rooms/:id/occupancy`, `GET /audit-logs`, `POST /auth/resend-verification`.
+`node dist/scripts/seed-extras.js` (or `npx ts-node src/scripts/seed-extras.ts`) adds wards, vitals and
+vaccinations to an existing database idempotently.
+
 ### Tests & coverage
 
-38 integration tests in 8 suites (`apps/backend/test`) cover every PRD mandatory scenario
+48 integration tests in 9 suites (`apps/backend/test`) cover every PRD mandatory scenario
 plus the lab, prescription, admin, onboarding, auth, vaccination, audit and encryption flows.
 
 ```bash
@@ -369,8 +402,8 @@ cd apps/backend && npx jest --config ./test/jest-e2e.json --runInBand --coverage
 # HTML report → apps/backend/coverage/index.html
 ```
 
-Current coverage (backend `src/`, excluding module wiring): **74% lines, 71% statements,
-77% functions**. A snapshot of the HTML report is committed in `docs/coverage/`.
+Current coverage (backend `src/`, excluding module wiring): **76% lines, 72% statements,
+78% functions**. A snapshot of the HTML report is committed in `docs/coverage/`.
 
 ### Documentation
 

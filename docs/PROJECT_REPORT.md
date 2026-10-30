@@ -22,7 +22,7 @@ The system is a pnpm monorepo:
 - `packages/types` — enums and API types shared by both apps.
 
 It is deployed with the frontend on Vercel and the API, database and Redis on Railway, with
-medical-record files in Google Cloud Storage. 38 integration tests run against a real
+medical-record files in Google Cloud Storage. 48 integration tests run against a real
 Postgres database in CI and cover 74% of backend lines.
 
 ## 2. Requirements coverage
@@ -139,7 +139,7 @@ Razorpay already covers cards, UPI and netbanking for the Indian market.
 
 | Layer | Tooling | What is covered |
 | --- | --- | --- |
-| Integration (API) | Jest + Supertest against a real Postgres + Redis | 38 tests in 8 suites |
+| Integration (API) | Jest + Supertest against a real Postgres + Redis | 48 tests in 9 suites |
 | Live smoke | `scripts/smoke.mjs` against Vercel → Railway | 12 checks: landing, proxy, logins, dashboards, invoices, Razorpay order, forged signature, lab and prescription PDFs |
 
 All six mandatory scenarios from the brief are automated:
@@ -153,7 +153,7 @@ All six mandatory scenarios from the brief are automated:
 
 The other suites walk the lab workflow, prescriptions, analytics, admin management, hospital
 onboarding, registration with OTP, password reset, vaccinations, audit logging, encryption at
-rest and the Razorpay webhook. Backend coverage is **74% of lines, 71% of statements and 77% of
+rest and the Razorpay webhook. Backend coverage is **76% of lines, 72% of statements and 78% of
 functions** (HTML report in `docs/coverage/`). Branch coverage (43%) is the weakest number,
 mostly defensive error branches in PDF rendering and job processors.
 
@@ -189,7 +189,11 @@ file plus env vars run unchanged on an EC2 instance if needed.
    requests. Moving the rule into partial unique indexes made it impossible to break.
 4. **A tenancy hole found late.** The patient profile endpoint trusted the guard alone.
    Writing broader tests surfaced it, which reinforced the lesson below.
-5. **Invalid payment keys in production.** The smoke test caught Razorpay rejecting the
+5. **Authorization gaps found by walking the UI as each role.** A full click-through as all nine roles
+   surfaced endpoints that trusted the guard alone: any user could edit any account, any doctor could
+   overwrite any schedule, and stock could be added to another hospital's medicines. Each now checks
+   ownership in the service, with an e2e test per case (`test/security.e2e-spec.ts`).
+6. **Invalid payment keys in production.** The smoke test caught Razorpay rejecting the
    deployed key (401) before any user did. Swapping to a valid test key fixed it with no code change.
 
 ## 8. Lessons learned
@@ -208,7 +212,7 @@ file plus env vars run unchanged on an EC2 instance if needed.
 
 - Frontend component tests (Vitest) and Playwright journeys.
 - Insurance/TPA claim workflow beyond storing the insurer and policy number.
-- Bed management and a department occupancy heat map.
+- Bed-level patient assignment (beds are tracked as counts per room).
 - Doctor signature as an uploaded image (currently a rendered signature block).
 - Google OAuth and Stripe, if the product expands beyond India.
 
