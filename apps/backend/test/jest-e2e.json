@@ -1,13 +1,35 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "rootDir": "..",
   "testEnvironment": "node",
-  "testRegex": ".e2e-spec.ts$",
+  "testRegex": "test/.*\\.e2e-spec\\.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "./tsconfig.json" }]
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "./tsconfig.json"
+      }
+    ]
   },
-  "globalSetup": "<rootDir>/global-setup.ts",
-  "setupFiles": ["<rootDir>/set-test-env.ts"],
+  "globalSetup": "<rootDir>/test/global-setup.ts",
+  "setupFiles": [
+    "<rootDir>/test/set-test-env.ts"
+  ],
   "maxWorkers": 1,
-  "forceExit": true
+  "forceExit": true,
+  "collectCoverageFrom": [
+    "src/**/*.ts",
+    "!src/main.ts",
+    "!src/**/*.module.ts"
+  ],
+  "coverageDirectory": "<rootDir>/coverage",
+  "coverageReporters": [
+    "html",
+    "text-summary",
+    "json-summary"
+  ]
 }

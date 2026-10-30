@@ -1,9 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
+
+/** Slots change on every booking, so keep the cache short (PRD §3: 60 s). */
+export const AVAILABILITY_TTL_SECONDS = 60;
+export const availabilityKey = (doctorId: string, date: string) => `avail:${doctorId}:${date}`;
 
 @Injectable()
 export class DoctorsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redis: RedisService,
+  ) {}
 
   async findAll(
     hospitalId: string,
@@ -59,6 +67,15 @@ export class DoctorsService {
   }
 
   async getAvailability(id: string, date?: string) {
+    const cacheKey = availabilityKey(id, (date ? new Date(date) : new Date()).toISOString().split('T')[0]);
+    const cached = await this.redis.get(cacheKey).catch(() => null);
+    if (cached) return JSON.parse(cached);
+    const result = await this.computeAvailability(id, date);
+    await this.redis.setex(cacheKey, AVAILABILITY_TTL_SECONDS, JSON.stringify(result)).catch(() => undefined);
+    return result;
+  }
+
+  private async computeAvailability(id: string, date?: string) {
     const doctor = await this.findById(id);
     const weeklySchedule = (doctor.weeklySchedule as any) || {};
     const targetDate = date ? new Date(date) : new Date();

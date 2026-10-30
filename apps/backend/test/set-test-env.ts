@@ -6,4 +6,5 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-0123456789-a
 process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test-refresh-secret-0123456789-abcdefghijklmno';
 process.env.RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || 'test-razorpay-webhook-secret';
 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'test-razorpay-key-secret';
+process.env.FIELD_ENCRYPTION_KEY = process.env.FIELD_ENCRYPTION_KEY || '0'.repeat(63) + '1';
 process.env.NODE_ENV = 'test';

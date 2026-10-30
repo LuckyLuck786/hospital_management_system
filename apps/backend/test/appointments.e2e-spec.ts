@@ -60,6 +60,19 @@ describe('Appointments (e2e)', () => {
     expect(second.body.success).toBe(false);
   });
 
+  it('lets exactly one of two simultaneous bookings for a slot succeed', async () => {
+    const patientA = await loginAs(app, 'pat.a@test.local');
+    const patientB = await loginAs(app, 'pat.b@test.local');
+
+    const results = await Promise.all([
+      bookSlot(patientA, f.patientA, '16:30'),
+      bookSlot(patientB, f.patientB, '16:30'),
+    ]);
+    const statuses = results.map((r) => r.status).sort();
+    expect(statuses[0]).toBe(201);
+    expect(statuses[1]).toBe(409);
+  });
+
   it('allows the same patient to book a different time on the same day', async () => {
     const patientA = await loginAs(app, 'pat.a@test.local');
 

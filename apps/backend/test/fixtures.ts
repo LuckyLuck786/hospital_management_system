@@ -36,6 +36,9 @@ export async function createApp(): Promise<INestApplication> {
 /** Wipe all test tables in FK-safe order. */
 export async function resetDb() {
   await prisma.$transaction([
+    prisma.auditLog.deleteMany(),
+    prisma.vaccination.deleteMany(),
+    prisma.medicalRecordAttachment.deleteMany(),
     prisma.refreshToken.deleteMany(),
     prisma.payment.deleteMany(),
     prisma.invoiceItem.deleteMany(),

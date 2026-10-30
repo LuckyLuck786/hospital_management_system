@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class PatientsService {
@@ -50,7 +51,8 @@ export class PatientsService {
     };
   }
 
-  async findById(id: string) {
+  async findById(id: string, user: any) {
+    await this.assertAccess(id, user);
     const patient = await this.prisma.patient.findUnique({
       where: { id, deletedAt: null },
       include: {
@@ -79,5 +81,61 @@ export class PatientsService {
     });
     if (!patient) throw new NotFoundException('Patient not found');
     return patient;
+  }
+
+  /** Tenant isolation for staff; patients may only reach their own profile. */
+  private async assertAccess(patientId: string, user: any) {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, deletedAt: null },
+      select: { id: true, hospitalId: true, userId: true },
+    });
+    if (!patient) throw new NotFoundException('Patient not found');
+    if (user.role === UserRole.PATIENT && patient.userId !== user.id) {
+      throw new ForbiddenException('You can only view your own profile');
+    }
+    if (user.role !== UserRole.SUPER_ADMIN && patient.hospitalId !== user.hospitalId) {
+      throw new ForbiddenException('Access denied');
+    }
+    return patient;
+  }
+
+  async listVaccinations(patientId: string, user: any) {
+    await this.assertAccess(patientId, user);
+    return this.prisma.vaccination.findMany({
+      where: { patientId },
+      orderBy: { administeredOn: 'desc' },
+    });
+  }
+
+  async addVaccination(patientId: string, data: any, user: any) {
+    const patient = await this.assertAccess(patientId, user);
+    if (!data?.vaccineName || !data?.administeredOn) {
+      throw new BadRequestException('vaccineName and administeredOn are required');
+    }
+    return this.prisma.vaccination.create({
+      data: {
+        hospitalId: patient.hospitalId,
+        patientId,
+        vaccineName: String(data.vaccineName),
+        doseNumber: data.doseNumber != null ? Number(data.doseNumber) : null,
+        administeredOn: new Date(data.administeredOn),
+        batchNumber: data.batchNumber ?? null,
+        nextDueDate: data.nextDueDate ? new Date(data.nextDueDate) : null,
+        notes: data.notes ?? null,
+        recordedById: user.id,
+      },
+    });
+  }
+
+  async updateFamilyHistory(patientId: string, data: any, user: any) {
+    await this.assertAccess(patientId, user);
+    const flags = ['familyHistoryDiabetes', 'familyHistoryHypertension', 'familyHistoryCancer', 'familyHistoryCardiac'];
+    const update: Record<string, boolean> = {};
+    for (const f of flags) if (typeof data?.[f] === 'boolean') update[f] = data[f];
+    return this.prisma.patient.update({
+      where: { id: patientId },
+      data: update,
+      select: { id: true, ...Object.fromEntries(flags.map((f) => [f, true])) },
+    });
   }
 }

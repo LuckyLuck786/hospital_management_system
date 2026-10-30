@@ -134,6 +134,7 @@ model Hospital {
   notifications Notification[]
   auditLogs   AuditLog[]
   rooms       Room[]
+  vaccinations Vaccination[]
 
   @@index([isActive])
   @@index([isVerified])
@@ -278,6 +279,11 @@ model Patient {
   allergies             String?  @db.Text
   medicalHistory        String?  @db.Text
 
+  familyHistoryDiabetes     Boolean @default(false)
+  familyHistoryHypertension Boolean @default(false)
+  familyHistoryCancer       Boolean @default(false)
+  familyHistoryCardiac      Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
@@ -287,6 +293,7 @@ model Patient {
   labOrders      LabOrder[]
   invoices       Invoice[]
   payments       Payment[]
+  vaccinations   Vaccination[]
 
   @@index([hospitalId])
   @@index([patientId])
@@ -840,4 +847,24 @@ model AuditLog {
   @@index([entityType])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model Vaccination {
+  id             String    @id @default(uuid())
+  hospitalId     String
+  hospital       Hospital  @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient   @relation(fields: [patientId], references: [id])
+  vaccineName    String
+  doseNumber     Int?
+  administeredOn DateTime  @db.Date
+  batchNumber    String?
+  nextDueDate    DateTime? @db.Date
+  recordedById   String
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now())
+
+  @@index([hospitalId])
+  @@index([patientId])
+  @@map("vaccinations")
 }

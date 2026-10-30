@@ -2,10 +2,20 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException, 
 import { PrismaService } from '../common/prisma.service';
 import { AppointmentStatus, UserRole, NotificationType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { RedisService } from '../common/redis.service';
+import { availabilityKey } from '../doctors/doctors.service';
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redis: RedisService,
+  ) {}
+
+  /** Drop the cached slot list so the next availability read reflects this change. */
+  private async invalidateAvailability(doctorId: string, date: Date) {
+    await this.redis.del(availabilityKey(doctorId, date.toISOString().split('T')[0])).catch(() => undefined);
+  }
 
   async findAll(hospitalId: string, filters: any, user: any, page = 1, limit = 20) {
     const where: any = { hospitalId, deletedAt: null };
@@ -168,6 +178,7 @@ export class AppointmentsService {
           patient: { include: { user: { select: { firstName: true, lastName: true } } } },
         },
       });
+      await this.invalidateAvailability(appointment.doctorId, appointment.scheduledDate);
 
       // Create a draft invoice with the consultation fee
       if (doctor?.consultationFee) {
@@ -280,7 +291,7 @@ export class AppointmentsService {
     if (status === AppointmentStatus.CANCELLED) updateData.cancelledAt = new Date();
     if (notes) updateData.notes = notes;
 
-    return this.prisma.appointment.update({
+    const updated = await this.prisma.appointment.update({
       where: { id },
       data: updateData,
       include: {
@@ -288,6 +299,8 @@ export class AppointmentsService {
         patient: { include: { user: { select: { firstName: true, lastName: true } } } },
       },
     });
+    await this.invalidateAvailability(updated.doctorId, updated.scheduledDate);
+    return updated;
   }
 
   async getTodayAppointments(hospitalId: string, doctorId?: string, user?: any) {
