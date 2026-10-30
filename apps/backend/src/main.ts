@@ -101,6 +101,17 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
+
+  // One-off demo data top-up for deployed environments without shell access (idempotent).
+  if (process.env.SEED_EXTRAS_ON_BOOT === 'true') {
+    const { PrismaClient } = await import('@prisma/client');
+    const { seedExtras } = await import('./scripts/seed-extras');
+    const prisma = new PrismaClient();
+    seedExtras(prisma)
+      .then(() => console.log('Seed extras applied'))
+      .catch((e) => console.error('Seed extras failed', e))
+      .finally(() => prisma.$disconnect());
+  }
   console.log(`🚀 MedCore HMS API running on port ${port}`);
   console.log(`📚 Swagger docs available at http://localhost:${port}/api/docs`);
 }
