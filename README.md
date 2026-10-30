@@ -332,9 +332,62 @@ Use **test/development keys** first; never commit real secrets.
 **4. PDF branding (optional)** — drop a logo/signature file on any public URL and set
 `PDF_LOGO_URL` / `PDF_DOCTOR_SIGNATURE_URL`; placeholders are used otherwise.
 
-## Roadmap (future ideas)
+## Phase 6 — Security hardening, storage & submission docs (implemented)
 
-- Real-time waiting room / queue board for receptionists
-- OTP email-verification screen + phone OTP (Twilio Verify), Google OAuth
-- Emergency bookings and patient-level time-conflict rule
-- Unit tests for core services, GitHub Actions CI/CD, Sentry, S3 uploads
+- **Audit log** — a global interceptor writes every authenticated create/update/delete to
+  `AuditLog` (user, hospital, action, entity, IP, user agent). Request bodies are stored
+  with passwords, tokens, OTPs and signatures redacted.
+- **Encryption at rest** — `diagnosis`, `differentialDiagnosis`, `treatmentPlan` and `notes`
+  on medical records are encrypted with AES-256-GCM (`FIELD_ENCRYPTION_KEY`) in a Prisma
+  middleware and decrypted transparently on read. Legacy plaintext rows still read back.
+- **Log sanitiser** — error logs and Sentry events never include passwords, tokens or OTPs;
+  the signup OTP is emailed instead of printed.
+- **Phone verification** — `POST /auth/send-phone-otp` + `POST /auth/verify-phone` (Twilio SMS).
+- **Email** — Resend when `RESEND_API_KEY` is set, otherwise any SMTP server (`SMTP_URL`, e.g. Gmail).
+- **Medical-record attachments** — `POST /medical-records/:id/attachments` (doctor/nurse,
+  multipart `file`, max 20 MB). Extension + MIME allow-list (PDF, PNG, JPG, WEBP, TXT),
+  magic-byte check to reject renamed executables, images optimised with Sharp, stored in a
+  private Google Cloud Storage bucket; `GET .../attachments/:attachmentId/url` returns a
+  10-minute signed URL after the same tenant/patient checks as the record itself.
+- **Vaccination history** — `GET|POST /patients/:id/vaccinations` (date, vaccine, dose, batch, next due).
+- **Family-history flags** — `PATCH /patients/:id/family-history` (diabetes, hypertension, cancer, cardiac).
+- **Patient isolation fix** — `GET /patients/:id` now enforces hospital scoping and patient-own access.
+- **Patient double-booking** — partial unique index on (patientId, date, time) for active
+  appointments, next to the existing doctor-slot index.
+- **Rate limits** — 100 requests / 15 min per IP on `/api/auth/*`, 1000 / 15 min elsewhere.
+- **Sentry** — enabled when `SENTRY_DSN` is set (optional).
+- **CI** — `.github/workflows/ci.yml`: backend typecheck + e2e (Postgres + Redis services)
+  with coverage, frontend typecheck + production build, on every push and PR to `main`.
+
+### Tests & coverage
+
+38 integration tests in 8 suites (`apps/backend/test`) cover every PRD mandatory scenario
+plus the lab, prescription, admin, onboarding, auth, vaccination, audit and encryption flows.
+
+```bash
+cd apps/backend && npx jest --config ./test/jest-e2e.json --runInBand --coverage
+# HTML report → apps/backend/coverage/index.html
+```
+
+Current coverage (backend `src/`, excluding module wiring): **74% lines, 71% statements,
+77% functions**. A snapshot of the HTML report is committed in `docs/coverage/`.
+
+### Documentation
+
+| Document | What it covers |
+| --- | --- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Component + deployment diagrams, request flow, tenancy, caching, concurrency, security decisions |
+| [docs/ER_DIAGRAM.md](docs/ER_DIAGRAM.md) | Full entity-relationship diagram generated from `schema.prisma` |
+| [docs/PERMISSIONS_MATRIX.md](docs/PERMISSIONS_MATRIX.md) | Every endpoint × all 9 roles, generated from the `@Roles()` decorators |
+| [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md) | Technical decisions, challenges, deviations from the brief, lessons learned |
+
+`python3 scripts/gen-docs.py` regenerates the ER diagram and permissions matrix.
+
+### Deviations from the brief (documented choices)
+
+- **Backend on Railway instead of AWS EC2/RDS/S3** — same Docker image, managed Postgres +
+  Redis, zero-ops TLS. Files live in Google Cloud Storage instead of S3.
+- **Razorpay only** (no Stripe) — the target market is India; Razorpay covers cards, UPI
+  and netbanking. Stripe would add a second webhook path with no new behaviour.
+- **No Google OAuth** — email/password + OTP covers the flows the brief requires.
+- **Frontend primitives** — a small hand-built component kit on Tailwind instead of Shadcn.
