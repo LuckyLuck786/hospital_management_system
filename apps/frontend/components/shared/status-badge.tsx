@@ -22,6 +22,11 @@ const statusStyles: Record<string, string> = {
   RESULT_UPLOADED: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
   APPROVED: 'bg-green-50 text-green-700 ring-green-200',
   REJECTED: 'bg-red-50 text-red-700 ring-red-200',
+  // Insurance claims
+  SUBMITTED: 'bg-blue-50 text-blue-700 ring-blue-200',
+  UNDER_REVIEW: 'bg-violet-50 text-violet-700 ring-violet-200',
+  PARTIALLY_APPROVED: 'bg-amber-50 text-amber-800 ring-amber-200',
+  SETTLED: 'bg-gray-100 text-gray-700 ring-gray-200',
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {

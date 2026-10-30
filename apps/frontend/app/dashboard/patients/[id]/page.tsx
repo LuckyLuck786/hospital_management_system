@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/shared/states";
 import { FamilyHistoryPanel, RecordsPanel, VaccinationsPanel, VitalsPanel } from "@/components/modules/patient-panels";
-import { AlertTriangle, ArrowLeft, CalendarDays, Droplet, FileText, HeartPulse, Mail, Phone, ShieldCheck, Syringe } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BedDouble, CalendarDays, Droplet, FileText, HeartPulse, Mail, Phone, ShieldCheck, Syringe } from "lucide-react";
 
 type Tab = "vitals" | "records" | "vaccinations" | "visits";
 
@@ -69,6 +69,11 @@ export default function PatientChartPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2 pt-12">
+              {p.bed && (
+                <Link href="/dashboard/wards" className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100">
+                  <BedDouble className="h-3.5 w-3.5" /> Admitted · {p.bed.room.roomNumber} {p.bed.label}
+                </Link>
+              )}
               {u.bloodGroup && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700">
                   <Droplet className="h-3.5 w-3.5" /> {u.bloodGroup.replace("_POSITIVE", "+").replace("_NEGATIVE", "−")}

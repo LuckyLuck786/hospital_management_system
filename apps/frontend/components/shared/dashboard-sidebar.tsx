@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Boxes,
   HeartPulse,
+  ShieldPlus,
   X,
 } from "lucide-react";
 
@@ -57,6 +58,7 @@ const navGroups: Record<string, NavGroup[]> = {
         { label: "Doctors", href: "/dashboard/admin/doctors", icon: Stethoscope },
         { label: "Wards & Beds", href: "/dashboard/wards", icon: BedDouble },
         { label: "Billing", href: "/dashboard/receptionist/billing", icon: CreditCard },
+        { label: "Insurance Claims", href: "/dashboard/insurance", icon: ShieldPlus },
       ],
     },
     {
@@ -101,6 +103,7 @@ const navGroups: Record<string, NavGroup[]> = {
         { label: "Appointments", href: "/dashboard/receptionist/appointments", icon: CalendarDays },
         { label: "Patients", href: "/dashboard/patients", icon: Users },
         { label: "Billing", href: "/dashboard/receptionist/billing", icon: CreditCard },
+        { label: "Insurance Claims", href: "/dashboard/insurance", icon: ShieldPlus },
         { label: "Wards & Beds", href: "/dashboard/wards", icon: BedDouble },
       ],
     },
@@ -122,7 +125,13 @@ const navGroups: Record<string, NavGroup[]> = {
   ],
   ACCOUNTANT: [
     { items: [{ label: "Finance", href: "/dashboard/accountant", icon: LayoutDashboard }] },
-    { title: "Accounts", items: [{ label: "Invoices & Payments", href: "/dashboard/receptionist/billing", icon: CreditCard }] },
+    {
+      title: "Accounts",
+      items: [
+        { label: "Invoices & Payments", href: "/dashboard/receptionist/billing", icon: CreditCard },
+        { label: "Insurance Claims", href: "/dashboard/insurance", icon: ShieldPlus },
+      ],
+    },
     { items: [SETTINGS] },
   ],
   PATIENT: [

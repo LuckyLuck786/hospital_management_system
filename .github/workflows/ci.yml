@@ -59,4 +59,5 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
       - run: pnpm --filter ./apps/frontend exec tsc --noEmit
+      - run: pnpm --filter ./apps/frontend exec vitest run
       - run: pnpm --filter ./apps/frontend exec next build

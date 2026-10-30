@@ -8,7 +8,7 @@ import { Modal } from "@/components/shared/modal";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
 import { formatDate, formatCurrency } from "@/lib/roles";
-import { CreditCard, AlertCircle, CheckCircle2, IndianRupee, Smartphone, Landmark } from "lucide-react";
+import { CreditCard, AlertCircle, CheckCircle2, IndianRupee, Smartphone, Landmark, ShieldCheck } from "lucide-react";
 
 export default function PatientBillsPage() {
   const [payInvoice, setPayInvoice] = useState<any>(null);
@@ -17,6 +17,10 @@ export default function PatientBillsPage() {
   const { data: invoices, isLoading, isError, refetch } = useQuery({
     queryKey: ["my-invoices"],
     queryFn: async () => (await api.get("/invoices?limit=50")).data.data,
+  });
+  const { data: claims } = useQuery({
+    queryKey: ["claims", "mine"],
+    queryFn: async () => (await api.get("/insurance-claims")).data.data as any[],
   });
 
   return (
@@ -53,7 +57,7 @@ export default function PatientBillsPage() {
                     <StatusBadge status={inv.status} />
                   </td>
                   <td className="px-6 py-3">
-                    {inv.status === "FINALIZED" && (
+                    {(inv.status === "FINALIZED" || inv.status === "PARTIALLY_PAID") && (
                       <button onClick={() => setPayInvoice(inv)} className="btn-primary text-xs px-3 py-1.5">
                         Pay Now
                       </button>
@@ -69,6 +73,32 @@ export default function PatientBillsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!!claims?.length && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
+            <ShieldCheck className="h-5 w-5 text-primary-600" /> Insurance claims
+          </h2>
+          <div className="space-y-2">
+            {claims.map((c) => (
+              <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {c.insurer}
+                    {c.tpaName ? <span className="font-normal text-gray-500"> via {c.tpaName}</span> : null}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {c.claimNumber} · {c.invoice?.invoiceNumber} · claimed {formatCurrency(c.claimedAmount)}
+                    {c.approvedAmount != null && ` · approved ${formatCurrency(c.approvedAmount)}`}
+                  </p>
+                  {c.decisionNote && <p className="text-xs text-gray-500">{c.decisionNote}</p>}
+                </div>
+                <StatusBadge status={c.status} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

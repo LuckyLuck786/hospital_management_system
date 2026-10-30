@@ -8,11 +8,13 @@ import { Modal } from "@/components/shared/modal";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
 import { formatDate, formatCurrency } from "@/lib/roles";
-import { CreditCard, CheckCircle2, FileCheck2, ReceiptText, AlertCircle, IndianRupee } from "lucide-react";
+import { CreditCard, CheckCircle2, FileCheck2, ReceiptText, AlertCircle, IndianRupee, ShieldCheck } from "lucide-react";
+import { FileClaimModal } from "@/components/modules/file-claim-modal";
 
 export default function ReceptionistBillingPage() {
   const [filter, setFilter] = useState("");
   const [invoice, setInvoice] = useState<any>(null);
+  const [claimFor, setClaimFor] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -57,7 +59,7 @@ export default function ReceptionistBillingPage() {
       </div>
 
       <div className="flex gap-2">
-        {["", "DRAFT", "FINALIZED", "PAID"].map((f) => (
+        {["", "DRAFT", "FINALIZED", "PARTIALLY_PAID", "PAID"].map((f) => (
           <button
             key={f || "all"}
             onClick={() => setFilter(f)}
@@ -65,7 +67,7 @@ export default function ReceptionistBillingPage() {
               filter === f ? "bg-primary-600 text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
             }`}
           >
-            {f || "All"}
+            {f ? f.replace(/_/g, " ") : "All"}
           </button>
         ))}
       </div>
@@ -77,8 +79,8 @@ export default function ReceptionistBillingPage() {
       ) : invoices.length === 0 ? (
         <EmptyState icon={ReceiptText} title="No invoices" description="Invoices appear here when appointments are booked." />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[56rem] text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
                 <th className="px-6 py-3 font-medium">Invoice</th>
@@ -114,13 +116,21 @@ export default function ReceptionistBillingPage() {
                         <FileCheck2 className="w-3.5 h-3.5" /> Finalize
                       </button>
                     )}
-                    {inv.status === "FINALIZED" && (
-                      <button
-                        onClick={() => setInvoice(inv)}
-                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100"
-                      >
-                        <IndianRupee className="w-3.5 h-3.5" /> Collect
-                      </button>
+                    {(inv.status === "FINALIZED" || inv.status === "PARTIALLY_PAID") && (
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          onClick={() => setInvoice(inv)}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100"
+                        >
+                          <IndianRupee className="w-3.5 h-3.5" /> Collect
+                        </button>
+                        <button
+                          onClick={() => setClaimFor(inv)}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" /> Claim
+                        </button>
+                      </div>
                     )}
                     {inv.status === "PAID" && (
                       <span className="text-xs text-green-600 flex items-center gap-1">
@@ -134,6 +144,8 @@ export default function ReceptionistBillingPage() {
           </table>
         </div>
       )}
+
+      {claimFor && <FileClaimModal open invoice={claimFor} onClose={() => setClaimFor(null)} />}
 
       {invoice && (
         <CollectModal
