@@ -135,6 +135,7 @@ model Hospital {
   auditLogs   AuditLog[]
   rooms       Room[]
   vaccinations Vaccination[]
+  vitalSigns   VitalSign[]
 
   @@index([isActive])
   @@index([isVerified])
@@ -294,6 +295,7 @@ model Patient {
   invoices       Invoice[]
   payments       Payment[]
   vaccinations   Vaccination[]
+  vitalSigns     VitalSign[]
 
   @@index([hospitalId])
   @@index([patientId])
@@ -386,6 +388,7 @@ model Room {
   roomNumber   String
   type         String
   capacity     Int         @default(1)
+  occupiedBeds Int         @default(0)
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
   hospitalId   String
@@ -867,4 +870,30 @@ model Vaccination {
   @@index([hospitalId])
   @@index([patientId])
   @@map("vaccinations")
+}
+
+/// Triage / ward observations recorded by nurses (or doctors) outside a full encounter.
+model VitalSign {
+  id            String    @id @default(uuid())
+  hospitalId    String
+  hospital      Hospital  @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  patientId     String
+  patient       Patient   @relation(fields: [patientId], references: [id])
+  appointmentId String?
+  systolic      Int?
+  diastolic     Int?
+  pulse         Int?
+  temperature   Decimal?  @db.Decimal(4, 1)
+  spo2          Int?
+  respiratoryRate Int?
+  height        Decimal?  @db.Decimal(5, 2)
+  weight        Decimal?  @db.Decimal(5, 2)
+  bmi           Decimal?  @db.Decimal(4, 2)
+  notes         String?   @db.Text
+  recordedById  String
+  recordedAt    DateTime  @default(now())
+
+  @@index([hospitalId])
+  @@index([patientId, recordedAt])
+  @@map("vital_signs")
 }

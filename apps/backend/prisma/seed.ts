@@ -1,5 +1,6 @@
 import { PrismaClient, UserRole, Gender, BloodGroup, AppointmentStatus, PaymentMethod, LabOrderStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { seedExtras } from '../src/scripts/seed-extras';
 
 const prisma = new PrismaClient();
 
@@ -575,9 +576,15 @@ async function main() {
         // Keep each appointment inside the doctor's own hospital so a patient's
         // records never land under a different tenant (which the tenant-isolation
         // checks would then forbid the patient from opening).
-        const hospitalPatients = patients.filter((p) => p.hospitalId === doctor.hospitalId);
-        const patient =
-          hospitalPatients[Math.floor(Math.random() * hospitalPatients.length)] || patients[0];
+        // A patient can only hold one active booking per slot (partial unique index),
+        // so pick someone who is free at this date/time.
+        const dateKey = date.toISOString().split('T')[0];
+        const hospitalPatients = patients.filter(
+          (p) => p.hospitalId === doctor.hospitalId && !usedSlots.has(`p:${p.id}|${dateKey}|${time}`),
+        );
+        if (!hospitalPatients.length) continue;
+        const patient = hospitalPatients[Math.floor(Math.random() * hospitalPatients.length)];
+        usedSlots.add(`p:${patient.id}|${dateKey}|${time}`);
         const isPast = dayOffset < 0;
         const isToday = dayOffset === 0;
         const status: AppointmentStatus = isPast
@@ -826,6 +833,9 @@ async function main() {
     skipDuplicates: true,
   });
   console.log('📅 Demo patient upcoming appointments seeded');
+
+  await seedExtras(prisma);
+  console.log('🛏️  Wards, vitals and vaccinations seeded');
 
   console.log('');
   console.log('✅ SEEDING COMPLETE!');

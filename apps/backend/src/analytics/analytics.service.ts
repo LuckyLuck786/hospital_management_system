@@ -40,6 +40,7 @@ export class AnalyticsService {
       lowStockMedicines,
       departments,
       recentActivity,
+      rooms,
     ] = await Promise.all([
       this.prisma.patient.count({ where: { hospitalId, deletedAt: null } }),
       this.prisma.patient.count({ where: { hospitalId, createdAt: { gte: today, lt: tomorrow } } }),
@@ -63,7 +64,7 @@ export class AnalyticsService {
         },
       }),
       this.prisma.payment.aggregate({
-        where: { paidAt: { gte: today, lt: tomorrow }, status: 'COMPLETED' },
+        where: { paidAt: { gte: today, lt: tomorrow }, status: 'COMPLETED', invoice: { hospitalId } },
         _sum: { amount: true },
       }),
       this.prisma.medicine.findMany({
@@ -87,7 +88,22 @@ export class AnalyticsService {
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
+      this.prisma.room.findMany({
+        where: { hospitalId, isActive: true },
+        select: { capacity: true, occupiedBeds: true, department: { select: { name: true } } },
+      }),
     ]);
+
+    const occupancy = new Map<string, { beds: number; occupied: number }>();
+    for (const r of rooms) {
+      const k = r.department?.name ?? 'General';
+      const o = occupancy.get(k) ?? { beds: 0, occupied: 0 };
+      o.beds += r.capacity;
+      o.occupied += r.occupiedBeds;
+      occupancy.set(k, o);
+    }
+    const totalBeds = rooms.reduce((s, r) => s + r.capacity, 0);
+    const occupiedBeds = rooms.reduce((s, r) => s + r.occupiedBeds, 0);
 
     const lowStock = lowStockMedicines
       .map((m) => {
@@ -104,18 +120,29 @@ export class AnalyticsService {
         appointmentsToday,
         appointmentsPendingReview,
         revenueToday: Number(revenueToday._sum.amount || 0),
+        totalBeds,
+        occupiedBeds,
       },
+      departmentOccupancy: [...occupancy.entries()]
+        .map(([name, o]) => ({ name, beds: o.beds, occupied: o.occupied, rate: o.beds ? Math.round((o.occupied / o.beds) * 100) : 0 }))
+        .sort((a, b) => b.rate - a.rate),
       lowStockMedicines: lowStock.map((m) => ({
         id: m.id,
         name: m.name,
         inStock: m.inStock,
         reorderLevel: m.reorderLevel,
       })),
-      departments: departments.map((d) => ({
-        name: d.name,
-        doctors: d._count.doctors,
-        appointments: d._count.appointments,
-      })),
+      // Merge by name so the platform view (several hospitals) shows one row per specialty
+      departments: [
+        ...departments
+          .reduce((m, d) => {
+            const cur = m.get(d.name) ?? { name: d.name, doctors: 0, appointments: 0 };
+            cur.doctors += d._count.doctors;
+            cur.appointments += d._count.appointments;
+            return m.set(d.name, cur);
+          }, new Map<string, { name: string; doctors: number; appointments: number }>())
+          .values(),
+      ],
       recentActivity: recentActivity.map((a) => ({
         id: a.id,
         type: a.status,

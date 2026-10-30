@@ -33,8 +33,8 @@ export class UsersController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
-  async findById(@Param('id') id: string) {
-    return this.usersService.findById(id);
+  async findById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.findByIdFor(id, user);
   }
 
   @Post()
@@ -46,14 +46,14 @@ export class UsersController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update user' })
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.usersService.update(id, data);
+  async update(@Param('id') id: string, @Body() data: any, @CurrentUser() user: any) {
+    return this.usersService.update(id, data, user);
   }
 
   @Delete(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN)
   @ApiOperation({ summary: 'Soft delete user' })
-  async remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  async remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.remove(id, user);
   }
 }

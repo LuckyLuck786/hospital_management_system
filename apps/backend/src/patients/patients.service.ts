@@ -138,4 +138,42 @@ export class PatientsService {
       select: { id: true, ...Object.fromEntries(flags.map((f) => [f, true])) },
     });
   }
+
+  async listVitals(patientId: string, user: any, limit = 30) {
+    await this.assertAccess(patientId, user);
+    return this.prisma.vitalSign.findMany({
+      where: { patientId },
+      orderBy: { recordedAt: 'desc' },
+      take: Math.min(limit, 100),
+    });
+  }
+
+  async addVitals(patientId: string, data: any, user: any) {
+    const patient = await this.assertAccess(patientId, user);
+    const num = (v: any) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v));
+    const height = num(data.height);
+    const weight = num(data.weight);
+    // BMI = kg / m², auto-calculated when both are present
+    const bmi = height && weight ? Math.round((weight / Math.pow(height / 100, 2)) * 100) / 100 : null;
+    const values = [data.systolic, data.diastolic, data.pulse, data.temperature, data.spo2, height, weight].map(num);
+    if (values.every((v) => v == null)) throw new BadRequestException('Record at least one vital sign');
+    return this.prisma.vitalSign.create({
+      data: {
+        hospitalId: patient.hospitalId,
+        patientId,
+        appointmentId: data.appointmentId || null,
+        systolic: num(data.systolic),
+        diastolic: num(data.diastolic),
+        pulse: num(data.pulse),
+        temperature: num(data.temperature),
+        spo2: num(data.spo2),
+        respiratoryRate: num(data.respiratoryRate),
+        height,
+        weight,
+        bmi,
+        notes: data.notes || null,
+        recordedById: user.id,
+      },
+    });
+  }
 }

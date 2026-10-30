@@ -17,6 +17,10 @@ const STAFF = [
   UserRole.ACCOUNTANT,
 ];
 
+/** Super Admins without a hospital see platform-wide numbers (undefined = no hospital filter in Prisma). */
+const scope = (hospitalId: string | null, user: any): any =>
+  user?.role === UserRole.SUPER_ADMIN && !hospitalId ? undefined : hospitalId;
+
 @ApiTags('Analytics')
 @Controller('analytics')
 @ApiBearerAuth()
@@ -27,7 +31,7 @@ export class AnalyticsController {
   @Roles(...STAFF)
   @ApiOperation({ summary: 'Role-aware dashboard KPIs and panels' })
   async dashboard(@TenantId() hospitalId: string, @CurrentUser() user: any) {
-    return this.analyticsService.dashboard(hospitalId, user);
+    return this.analyticsService.dashboard(scope(hospitalId, user), user);
   }
 
   @Get('revenue')
@@ -35,23 +39,24 @@ export class AnalyticsController {
   @ApiOperation({ summary: 'Daily revenue series (paid amounts) between dates' })
   async revenue(
     @TenantId() hospitalId: string,
+    @CurrentUser() user: any,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.analyticsService.revenue(hospitalId, from, to);
+    return this.analyticsService.revenue(scope(hospitalId, user), from, to);
   }
 
   @Get('appointment-volume')
   @Roles(...STAFF)
   @ApiOperation({ summary: 'Appointment volume per day for the last N days' })
-  async appointmentVolume(@TenantId() hospitalId: string, @Query('days') days?: string) {
-    return this.analyticsService.appointmentVolume(hospitalId, parseInt(days) || 14);
+  async appointmentVolume(@TenantId() hospitalId: string, @CurrentUser() user: any, @Query('days') days?: string) {
+    return this.analyticsService.appointmentVolume(scope(hospitalId, user), parseInt(days) || 14);
   }
 
   @Get('patient-growth')
   @Roles(...STAFF)
   @ApiOperation({ summary: 'New patient registrations per day for the last N days' })
-  async patientGrowth(@TenantId() hospitalId: string, @Query('days') days?: string) {
-    return this.analyticsService.patientGrowth(hospitalId, parseInt(days) || 14);
+  async patientGrowth(@TenantId() hospitalId: string, @CurrentUser() user: any, @Query('days') days?: string) {
+    return this.analyticsService.patientGrowth(scope(hospitalId, user), parseInt(days) || 14);
   }
 }

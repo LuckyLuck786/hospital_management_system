@@ -23,6 +23,8 @@ import { JobsModule } from './jobs/jobs.module';
 import { PdfModule } from './pdf/pdf.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
+import { WardsModule } from './wards/wards.module';
+import { AuditModule } from './audit/audit.module';
 import { PrismaModule } from './common/prisma.module';
 import { RedisModule } from './common/redis.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -61,6 +63,8 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     PharmacyModule,
     AnalyticsModule,
     SearchModule,
+    WardsModule,
+    AuditModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

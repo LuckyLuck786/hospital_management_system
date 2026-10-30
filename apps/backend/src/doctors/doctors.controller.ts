@@ -4,6 +4,7 @@ import { DoctorsService } from './doctors.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { TenantId } from '../common/decorators/tenant.decorator';
 import { UserRole } from '@prisma/client';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Doctors')
 @Controller('doctors')
@@ -42,7 +43,7 @@ export class DoctorsController {
   @Patch(':id/schedule')
   @Roles(UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Update doctor schedule' })
-  async updateSchedule(@Param('id') id: string, @Body() schedule: any) {
-    return this.doctorsService.updateSchedule(id, schedule);
+  async updateSchedule(@Param('id') id: string, @Body() schedule: any, @CurrentUser() user: any) {
+    return this.doctorsService.updateSchedule(id, schedule, user);
   }
 }

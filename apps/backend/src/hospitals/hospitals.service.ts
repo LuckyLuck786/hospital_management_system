@@ -11,7 +11,7 @@ export class HospitalsService {
         where: { deletedAt: null },
         include: {
           address: true,
-          _count: { select: { users: true, departments: true } },
+          _count: { select: { users: true, departments: true, doctors: true, patients: true } },
         },
         skip: (page - 1) * limit,
         take: limit,

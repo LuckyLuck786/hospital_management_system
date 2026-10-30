@@ -46,6 +46,7 @@ export class MedicalRecordsService {
           },
         },
         labOrders: { select: { id: true, status: true, orderNumber: true } },
+        attachments: { orderBy: { createdAt: 'desc' } },
       },
       orderBy: { createdAt: 'desc' },
     });

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '@prisma/client';
@@ -47,7 +47,7 @@ export class UsersService {
       select: {
         id: true, email: true, firstName: true, lastName: true,
         phone: true, role: true, hospitalId: true,
-        isActive: true, isEmailVerified: true,
+        isActive: true, isEmailVerified: true, isPhoneVerified: true,
         dateOfBirth: true, gender: true, bloodGroup: true,
         createdAt: true, updatedAt: true,
         address: true,
@@ -140,9 +140,25 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, data: any) {
+  /** PRD §8: users are readable/editable by themselves or by an admin of the same hospital. */
+  private assertSelfOrAdmin(target: { id: string; hospitalId: string | null }, actor: any) {
+    if (actor.id === target.id || actor.role === UserRole.SUPER_ADMIN) return;
+    if (actor.role === UserRole.HOSPITAL_ADMIN && target.hospitalId === actor.hospitalId) return;
+    throw new ForbiddenException('You can only access your own account');
+  }
+
+  async findByIdFor(id: string, actor: any) {
+    const target = await this.prisma.user.findFirst({ where: { id, deletedAt: null }, select: { id: true, hospitalId: true } });
+    if (!target) throw new NotFoundException('User not found');
+    this.assertSelfOrAdmin(target, actor);
+    return this.findById(id);
+  }
+
+  async update(id: string, data: any, actor: any) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
+    this.assertSelfOrAdmin(user, actor);
+    const isAdmin = actor.role === UserRole.SUPER_ADMIN || actor.role === UserRole.HOSPITAL_ADMIN;
 
     const updateData: any = {};
     if (data.firstName) updateData.firstName = data.firstName;
@@ -151,14 +167,19 @@ export class UsersService {
     if (data.dateOfBirth) updateData.dateOfBirth = new Date(data.dateOfBirth);
     if (data.gender) updateData.gender = data.gender;
     if (data.bloodGroup) updateData.bloodGroup = data.bloodGroup;
-    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.phone && data.phone !== user.phone) updateData.isPhoneVerified = false;
+    // Only admins may (de)activate accounts, and never their own
+    if (data.isActive !== undefined && isAdmin && actor.id !== id) updateData.isActive = Boolean(data.isActive);
 
-    return this.prisma.user.update({ where: { id }, data: updateData });
+    await this.prisma.user.update({ where: { id }, data: updateData });
+    return this.findById(id);
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: any) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
+    if (actor.id === id) throw new ForbiddenException('You cannot delete your own account');
+    this.assertSelfOrAdmin(user, actor);
     return this.prisma.user.update({
       where: { id },
       data: { deletedAt: new Date(), isActive: false },

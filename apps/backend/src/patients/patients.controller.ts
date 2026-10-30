@@ -58,6 +58,20 @@ export class PatientsController {
     return this.patientsService.addVaccination(id, data, user);
   }
 
+  @Get(':id/vitals')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT)
+  @ApiOperation({ summary: 'Vital-sign history (newest first)' })
+  async listVitals(@Param('id') id: string, @CurrentUser() user: any, @Query('limit') limit = '30') {
+    return this.patientsService.listVitals(id, user, parseInt(limit));
+  }
+
+  @Post(':id/vitals')
+  @Roles(UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Record vital signs (BMI auto-calculated from height and weight)' })
+  async addVitals(@Param('id') id: string, @Body() data: any, @CurrentUser() user: any) {
+    return this.patientsService.addVitals(id, data, user);
+  }
+
   @Patch(':id/family-history')
   @Roles(UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Update family-history flags (diabetes, hypertension, cancer, cardiac)' })

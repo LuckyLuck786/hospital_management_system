@@ -38,7 +38,7 @@ export class MedicinesController {
   @Post(':id/batches')
   @Roles(UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Add a stock batch to a medicine' })
-  async addBatch(@Param('id') id: string, @Body() data: any) {
-    return this.medicinesService.addBatch(id, data);
+  async addBatch(@Param('id') id: string, @Body() data: any, @TenantId() hospitalId: string) {
+    return this.medicinesService.addBatch(id, data, hospitalId);
   }
 }

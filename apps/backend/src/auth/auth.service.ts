@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { UserRole } from '@prisma/client';
 import { EmailService } from '../channels/email.service';
 import { SmsService } from '../channels/sms.service';
+import { allowedOrigins } from '../common/cors';
 
 @Injectable()
 export class AuthService {
@@ -256,11 +257,33 @@ export class AuthService {
       data: { passwordResetToken: resetToken, passwordResetExpiresAt: resetExpiresAt },
     });
 
-    console.log(`Password reset token for ${email}: ${resetToken}`);
+    const appUrl = (process.env.APP_URL || String(allowedOrigins()).split(',')[0]).replace(/\/$/, '');
+    const link = `${appUrl}/auth/reset-password?token=${resetToken}`;
+    await this.email.send(
+      user.email,
+      'Reset your MedCore HMS password',
+      `<p>Hello ${user.firstName},</p><p>Use the link below to choose a new password. It expires in 1 hour.</p>` +
+        `<p><a href="${link}">Reset my password</a></p><p>If you did not ask for this, you can ignore this email.</p>`,
+    );
     return { message: 'If the email exists, a reset link has been sent' };
   }
 
+  async resendVerification(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    // Same response either way so the endpoint cannot be used to probe accounts
+    if (user && !user.isEmailVerified) {
+      const otp = this.generateOtp();
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { emailOtp: otp, emailOtpExpiresAt: new Date(Date.now() + 15 * 60 * 1000) },
+      });
+      await this.email.send(user.email, 'Your MedCore HMS verification code', `<p>Your verification code is <b>${otp}</b>. It expires in 15 minutes.</p>`);
+    }
+    return { message: 'If the account needs verification, a new code has been sent' };
+  }
+
   async resetPassword(token: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 8) throw new BadRequestException('Password must be at least 8 characters');
     const user = await this.prisma.user.findFirst({
       where: { passwordResetToken: token, passwordResetExpiresAt: { gt: new Date() } },
     });

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
 
@@ -117,11 +117,31 @@ export class DoctorsService {
     };
   }
 
-  async updateSchedule(id: string, schedule: any) {
-    return this.prisma.doctor.update({
-      where: { id },
-      data: { weeklySchedule: schedule },
-    });
+  /** Doctors edit their own week; hospital admins edit doctors in their hospital. */
+  async updateSchedule(id: string, schedule: any, user: any) {
+    const doctor = await this.prisma.doctor.findUnique({ where: { id }, select: { id: true, userId: true, hospitalId: true } });
+    if (!doctor) throw new NotFoundException('Doctor not found');
+    if (user.role === 'DOCTOR' && doctor.userId !== user.id) throw new ForbiddenException('You can only edit your own schedule');
+    if (user.role === 'HOSPITAL_ADMIN' && doctor.hospitalId !== user.hospitalId) throw new ForbiddenException('Access denied');
+
+    const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const clean: Record<string, Array<{ start: string; end: string; slotDuration: number }>> = {};
+    const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
+    for (const day of DAYS) {
+      const windows = Array.isArray(schedule?.[day]) ? schedule[day] : [];
+      clean[day] = windows.map((w: any) => {
+        const slotDuration = Number(w?.slotDuration) || 30;
+        if (!hhmm.test(w?.start) || !hhmm.test(w?.end) || w.start >= w.end) {
+          throw new BadRequestException(`Invalid time window on ${day}: use HH:MM with start before end`);
+        }
+        if (![10, 15, 20, 30, 45, 60].includes(slotDuration)) throw new BadRequestException('slotDuration must be 10, 15, 20, 30, 45 or 60');
+        return { start: w.start, end: w.end, slotDuration };
+      });
+    }
+    const updated = await this.prisma.doctor.update({ where: { id }, data: { weeklySchedule: clean } });
+    const keys = await this.redis.keys(`avail:${id}:*`).catch(() => [] as string[]);
+    if (keys.length) await this.redis.del(...keys).catch(() => undefined);
+    return updated;
   }
 
   private parseTime(timeStr: string): number {

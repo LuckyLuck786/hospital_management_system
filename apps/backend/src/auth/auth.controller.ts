@@ -72,6 +72,14 @@ export class AuthController {
   }
 
   @Public()
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Email a fresh verification code' })
+  async resendVerification(@Body() dto: any) {
+    return this.authService.resendVerification(dto.email);
+  }
+
+  @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request password reset' })

@@ -76,11 +76,17 @@ export class MedicinesService {
     });
   }
 
-  async addBatch(medicineId: string, data: any) {
+  async addBatch(medicineId: string, data: any, hospitalId?: string | null) {
     const medicine = await this.prisma.medicine.findUnique({ where: { id: medicineId } });
     if (!medicine) throw new NotFoundException('Medicine not found');
+    if (hospitalId && medicine.hospitalId !== hospitalId) throw new NotFoundException('Medicine not found');
 
+    const quantity = Number(data.quantity);
+    if (!data.batchNumber || !Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException('batchNumber and a positive whole quantity are required');
+    }
     const expiryDate = new Date(data.expiryDate);
+    if (Number.isNaN(expiryDate.getTime())) throw new BadRequestException('expiryDate is required');
     if (expiryDate <= new Date()) {
       throw new BadRequestException('Cannot add a batch that is already expired');
     }
@@ -89,11 +95,11 @@ export class MedicinesService {
       data: {
         medicineId,
         batchNumber: data.batchNumber,
-        manufacturingDate: new Date(data.manufacturingDate) || new Date(),
+        manufacturingDate: data.manufacturingDate ? new Date(data.manufacturingDate) : new Date(),
         expiryDate,
-        quantity: data.quantity,
-        unitCost: data.unitCost,
-        mrp: data.mrp || medicine.mrp,
+        quantity,
+        unitCost: Number(data.unitCost) || 0,
+        mrp: Number(data.mrp) || medicine.mrp,
         supplier: data.supplier,
       },
     });
