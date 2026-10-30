@@ -11,6 +11,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { Modal } from "@/components/shared/modal";
 import { EmptyState, ErrorState, LoadingState } from "@/components/shared/states";
 import { FileClaimModal } from "@/components/modules/file-claim-modal";
+import { PreAuthModal } from "@/components/modules/pre-auth-modal";
 import { BadgeCheck, CircleDollarSign, FileClock, Hourglass, Loader2, Plus, ShieldCheck } from "lucide-react";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -191,6 +192,8 @@ export default function InsuranceClaimsPage() {
         )}
       </div>
 
+      <PreAuthSection canAdjudicate={canAdjudicate} canRequest={canFile} />
+
       <FileClaimModal open={fileOpen} onClose={() => setFileOpen(false)} />
 
       <Modal open={!!decision} onClose={() => setDecision(null)} title={decision?.kind === "partial" ? "Partial approval" : "Reject claim"}>
@@ -231,5 +234,163 @@ export default function InsuranceClaimsPage() {
         )}
       </Modal>
     </div>
+  );
+}
+
+/** Cashless pre-authorisation requests: estimate approved by the insurer before treatment. */
+function PreAuthSection({ canAdjudicate, canRequest }: { canAdjudicate: boolean; canRequest: boolean }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [decision, setDecision] = useState<{ pa: any; kind: "partial" | "reject" } | null>(null);
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["pre-auths"],
+    queryFn: async () => (await api.get("/insurance-claims/pre-auth")).data.data as any[],
+  });
+  const move = useMutation({
+    mutationFn: async ({ id, ...body }: any) => (await api.patch(`/insurance-claims/pre-auth/${id}/status`, body)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pre-auths"] });
+      setDecision(null);
+      setAmount("");
+      setNote("");
+      setError("");
+    },
+    onError: (e: any) => setError(e.response?.data?.error?.message || "Action failed"),
+  });
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Cashless pre-authorisations</h2>
+          <p className="text-sm text-gray-500">Insurer approval of the estimated cost before admission or a planned procedure.</p>
+        </div>
+        {canRequest && (
+          <button className="btn-secondary inline-flex items-center gap-2 text-sm" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" /> New pre-authorisation
+          </button>
+        )}
+      </div>
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        {isLoading ? (
+          <LoadingState />
+        ) : !data?.length ? (
+          <EmptyState icon={FileClock} title="No pre-authorisation requests" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Request</th>
+                  <th className="px-4 py-3 font-medium">Patient</th>
+                  <th className="hidden px-4 py-3 font-medium md:table-cell">Treatment</th>
+                  <th className="px-4 py-3 font-medium">Estimate</th>
+                  <th className="hidden px-4 py-3 font-medium lg:table-cell">Approved</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  {canAdjudicate && <th className="px-4 py-3 font-medium">Action</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {data.map((pa) => (
+                  <tr key={pa.id} className="align-top hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <p className="font-mono text-xs text-gray-800">{pa.requestNumber}</p>
+                      <p className="text-xs text-gray-500">
+                        {pa.insurer} · {formatDate(pa.createdAt)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {pa.patient?.user?.firstName} {pa.patient?.user?.lastName}
+                    </td>
+                    <td className="hidden max-w-xs px-4 py-3 text-gray-700 md:table-cell">{pa.treatment}</td>
+                    <td className="px-4 py-3 tabular-nums">{formatCurrency(pa.estimatedAmount)}</td>
+                    <td className="hidden px-4 py-3 tabular-nums lg:table-cell">
+                      {pa.approvedAmount != null ? formatCurrency(pa.approvedAmount) : "—"}
+                      {pa.validUntil && <p className="text-xs text-gray-400">valid till {formatDate(pa.validUntil)}</p>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset", STATUS_STYLE[pa.status])}>{pa.status.replace(/_/g, " ")}</span>
+                      {pa.decisionNote && <p className="mt-1 max-w-[14rem] text-xs text-gray-500">{pa.decisionNote}</p>}
+                      {pa.claims?.length > 0 && <p className="mt-1 text-xs text-gray-400">Claim {pa.claims[0].claimNumber}</p>}
+                    </td>
+                    {canAdjudicate && (
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {pa.status === "SUBMITTED" && (
+                            <button className="rounded-lg bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100" onClick={() => move.mutate({ id: pa.id, status: "UNDER_REVIEW" })}>
+                              Start review
+                            </button>
+                          )}
+                          {pa.status === "UNDER_REVIEW" && (
+                            <>
+                              <button className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100" onClick={() => move.mutate({ id: pa.id, status: "APPROVED" })}>
+                                Approve
+                              </button>
+                              <button className="rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100" onClick={() => setDecision({ pa, kind: "partial" })}>
+                                Partial
+                              </button>
+                            </>
+                          )}
+                          {(pa.status === "SUBMITTED" || pa.status === "UNDER_REVIEW") && (
+                            <button className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100" onClick={() => setDecision({ pa, kind: "reject" })}>
+                              Reject
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <PreAuthModal open={open} onClose={() => setOpen(false)} />
+
+      <Modal open={!!decision} onClose={() => setDecision(null)} title={decision?.kind === "partial" ? "Partial approval" : "Reject request"}>
+        {decision && (
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              move.mutate(
+                decision.kind === "partial"
+                  ? { id: decision.pa.id, status: "PARTIALLY_APPROVED", approvedAmount: Number(amount), decisionNote: note || undefined }
+                  : { id: decision.pa.id, status: "REJECTED", decisionNote: note },
+              );
+            }}
+          >
+            <p className="text-sm text-gray-600">
+              {decision.pa.requestNumber} · estimate <strong>{formatCurrency(decision.pa.estimatedAmount)}</strong>
+            </p>
+            {decision.kind === "partial" && (
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-gray-600">Amount approved (₹)</span>
+                <input type="number" min="1" required className="input-field" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              </label>
+            )}
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-600">{decision.kind === "reject" ? "Reason (required)" : "Note"}</span>
+              <textarea className="input-field" rows={2} required={decision.kind === "reject"} value={note} onChange={(e) => setNote(e.target.value)} />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setDecision(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary inline-flex items-center gap-2" disabled={move.isPending}>
+                {move.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Confirm
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+    </section>
   );
 }

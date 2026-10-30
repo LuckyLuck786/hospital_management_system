@@ -15,6 +15,7 @@ export function FileClaimModal({ open, onClose, invoice }: { open: boolean; onCl
   const qc = useQueryClient();
   const [invoiceId, setInvoiceId] = useState(invoice?.id || "");
   const [form, setForm] = useState({ insurer: "", tpaName: "", policyNumber: "", claimedAmount: "", notes: "" });
+  const [preAuthorizationId, setPreAuthorizationId] = useState("");
   const [error, setError] = useState("");
 
   const { data: unpaid } = useQuery({
@@ -35,6 +36,13 @@ export function FileClaimModal({ open, onClose, invoice }: { open: boolean; onCl
     queryFn: async () => (await api.get(`/patients/${patientId}`)).data.data,
     enabled: open && !!patientId,
   });
+  const { data: preAuths } = useQuery({
+    queryKey: ["pre-auths", "approved", patientId],
+    queryFn: async () => (await api.get("/insurance-claims/pre-auth")).data.data as any[],
+    enabled: open && !!patientId,
+    select: (all) => (Array.isArray(all) ? all : []).filter((p) => p.patientId === patientId && (p.status === "APPROVED" || p.status === "PARTIALLY_APPROVED")),
+  });
+
   useEffect(() => {
     if (!selected) return;
     setForm((f) => ({
@@ -47,7 +55,7 @@ export function FileClaimModal({ open, onClose, invoice }: { open: boolean; onCl
 
   const file = useMutation({
     mutationFn: async () =>
-      (await api.post("/insurance-claims", { invoiceId: selected.id, ...form, claimedAmount: Number(form.claimedAmount) })).data,
+      (await api.post("/insurance-claims", { invoiceId: selected.id, ...form, claimedAmount: Number(form.claimedAmount), preAuthorizationId: preAuthorizationId || undefined })).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["claims"] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
@@ -114,6 +122,27 @@ export function FileClaimModal({ open, onClose, invoice }: { open: boolean; onCl
             />
           </label>
         </div>
+        {!!preAuths?.length && (
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-gray-600">Linked pre-authorisation</span>
+            <select
+              className="input-field"
+              value={preAuthorizationId}
+              onChange={(e) => {
+                setPreAuthorizationId(e.target.value);
+                const pa = preAuths.find((p) => p.id === e.target.value);
+                if (pa) setForm((f) => ({ ...f, insurer: pa.insurer, policyNumber: pa.policyNumber, tpaName: pa.tpaName || f.tpaName }));
+              }}
+            >
+              <option value="">None</option>
+              {preAuths.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.requestNumber} — {p.treatment.slice(0, 40)} — approved {formatCurrency(p.approvedAmount)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-gray-600">Notes for the insurer</span>
           <textarea className="input-field" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Diagnosis summary, pre-authorisation number…" />

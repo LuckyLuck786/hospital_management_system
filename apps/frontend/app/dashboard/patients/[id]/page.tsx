@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/shared/states";
 import { FamilyHistoryPanel, RecordsPanel, VaccinationsPanel, VitalsPanel } from "@/components/modules/patient-panels";
+import { PreAuthModal } from "@/components/modules/pre-auth-modal";
 import { AlertTriangle, ArrowLeft, BedDouble, CalendarDays, Droplet, FileText, HeartPulse, Mail, Phone, ShieldCheck, Syringe } from "lucide-react";
 
 type Tab = "vitals" | "records" | "vaccinations" | "visits";
@@ -27,6 +28,8 @@ export default function PatientChartPage() {
   const clinical = role === "DOCTOR" || role === "NURSE";
   const canSeeRecords = clinical; // PRD: EMR is visible to doctors, nurses and the patient
   const [tab, setTab] = useState<Tab>(clinical ? "vitals" : "visits");
+  const [preAuthOpen, setPreAuthOpen] = useState(false);
+  const canPreAuth = ["DOCTOR", "RECEPTIONIST", "ACCOUNTANT", "HOSPITAL_ADMIN"].includes(role);
 
   const { data: p, isLoading, isError, refetch } = useQuery({
     queryKey: ["patient", id],
@@ -78,6 +81,11 @@ export default function PatientChartPage() {
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700">
                   <Droplet className="h-3.5 w-3.5" /> {u.bloodGroup.replace("_POSITIVE", "+").replace("_NEGATIVE", "−")}
                 </span>
+              )}
+              {canPreAuth && (
+                <button onClick={() => setPreAuthOpen(true)} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Request pre-authorisation
+                </button>
               )}
               <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
                 {p._count?.appointments ?? 0} visits · {p._count?.medicalRecords ?? 0} records
@@ -135,6 +143,8 @@ export default function PatientChartPage() {
             </button>
           ))}
       </div>
+
+      {canPreAuth && <PreAuthModal open={preAuthOpen} onClose={() => setPreAuthOpen(false)} patient={p} />}
 
       {tab === "vitals" && <VitalsPanel patientId={p.id} canRecord={clinical} patientName={`${u.firstName} ${u.lastName}`} />}
       {tab === "records" && canSeeRecords && <RecordsPanel patientId={p.id} canUpload={clinical} />}

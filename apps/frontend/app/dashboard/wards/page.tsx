@@ -221,6 +221,8 @@ function BedModal({ bed, role, onClose }: { bed: any; role: string; onClose: () 
   const [patient, setPatient] = useState<any>(null);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [toBedId, setToBedId] = useState("");
+  const [reason, setReason] = useState("");
   const canSetStatus = ["SUPER_ADMIN", "HOSPITAL_ADMIN", "NURSE"].includes(role);
 
   useEffect(() => {
@@ -241,6 +243,14 @@ function BedModal({ bed, role, onClose }: { bed: any; role: string; onClose: () 
   };
   const onErr = (e: any) => setError(e.response?.data?.error?.message || "Something went wrong");
   const admit = useMutation({ mutationFn: async () => (await api.post(`/wards/beds/${bed.id}/admit`, { patientId: patient.id, notes })).data, onSuccess: done, onError: onErr });
+  // Free beds anywhere in the hospital, grouped by room, for transfers (served from the page's cached query)
+  const { data: wards } = useQuery({ queryKey: ["wards"], queryFn: async () => (await api.get("/wards")).data.data, enabled: bed.status === "OCCUPIED" });
+  const freeBeds: Array<{ id: string; label: string }> = (wards?.wards || []).flatMap((w: any) =>
+    w.rooms.flatMap((r: any) =>
+      r.beds.filter((b: any) => b.status === "AVAILABLE").map((b: any) => ({ id: b.id, label: `${w.department} · ${r.roomNumber} (${r.type}) · ${b.label}` })),
+    ),
+  );
+  const transfer = useMutation({ mutationFn: async () => (await api.post(`/wards/beds/${bed.id}/transfer`, { toBedId, reason })).data, onSuccess: done, onError: onErr });
   const discharge = useMutation({ mutationFn: async () => (await api.post(`/wards/beds/${bed.id}/discharge`)).data, onSuccess: done, onError: onErr });
   const setStatus = useMutation({ mutationFn: async (status: string) => (await api.patch(`/wards/beds/${bed.id}/status`, { status })).data, onSuccess: done, onError: onErr });
 
@@ -264,6 +274,23 @@ function BedModal({ bed, role, onClose }: { bed: any; role: string; onClose: () 
               </div>
             ) : (
               <p className="text-sm text-gray-500">Occupied (no patient linked).</p>
+            )}
+            {bed.patient && (
+              <div className="space-y-2 rounded-xl border border-gray-200 p-3">
+                <p className="text-sm font-medium text-gray-900">Transfer to another bed</p>
+                <select className="input-field" value={toBedId} onChange={(e) => setToBedId(e.target.value)} aria-label="Target bed">
+                  <option value="">{freeBeds.length ? "Choose a free bed…" : "No free beds"}</option>
+                  {freeBeds.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.label}
+                    </option>
+                  ))}
+                </select>
+                <input className="input-field" placeholder="Reason (e.g. moved to ICU for monitoring)" value={reason} onChange={(e) => setReason(e.target.value)} />
+                <button className="btn-secondary inline-flex w-full items-center justify-center gap-2" disabled={!toBedId || transfer.isPending} onClick={() => transfer.mutate()}>
+                  {transfer.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Transfer patient
+                </button>
+              </div>
             )}
             <button className="btn-primary inline-flex w-full items-center justify-center gap-2" disabled={discharge.isPending} onClick={() => discharge.mutate()}>
               {discharge.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Discharge — bed goes to cleaning
