@@ -65,34 +65,43 @@ describe('User account authorization, wards and vitals (e2e)', () => {
     expect((await request(app.getHttpServer()).get(`/api/users/${docA}`).set(auth(adminA))).status).toBe(200);
   });
 
-  it('manages wards: admin adds a room, nurse updates occupancy within capacity', async () => {
+  it('manages beds: admit a patient to a specific bed, block double admission, discharge to cleaning', async () => {
     const room = await request(app.getHttpServer())
       .post('/api/wards/rooms')
       .set(auth(adminA))
-      .send({ roomNumber: 'W-101', type: 'General Ward', capacity: 4 });
+      .send({ roomNumber: 'W-101', type: 'General Ward', capacity: 3 });
     expect(room.status).toBe(201);
+    const [bed1, bed2] = room.body.data.beds;
 
-    const ok = await request(app.getHttpServer())
-      .patch(`/api/wards/rooms/${room.body.data.id}/occupancy`)
+    const admit = await request(app.getHttpServer())
+      .post(`/api/wards/beds/${bed1.id}/admit`)
       .set(auth(nurseA))
-      .send({ occupiedBeds: 3 });
-    expect(ok.status).toBe(200);
-    const tooMany = await request(app.getHttpServer())
-      .patch(`/api/wards/rooms/${room.body.data.id}/occupancy`)
-      .set(auth(nurseA))
-      .send({ occupiedBeds: 9 });
-    expect(tooMany.status).toBe(400);
-    const otherHospital = await request(app.getHttpServer())
-      .patch(`/api/wards/rooms/${room.body.data.id}/occupancy`)
-      .set(auth(adminB))
-      .send({ occupiedBeds: 1 });
+      .send({ patientId: f.patientA, notes: 'Observation' });
+    expect(admit.status).toBe(201);
+    expect(admit.body.data.patient.id).toBe(f.patientA);
+
+    // same patient cannot hold two beds; an occupied bed cannot take another patient
+    const twice = await request(app.getHttpServer()).post(`/api/wards/beds/${bed2.id}/admit`).set(auth(nurseA)).send({ patientId: f.patientA });
+    expect(twice.status).toBe(409);
+    const taken = await request(app.getHttpServer()).post(`/api/wards/beds/${bed1.id}/admit`).set(auth(nurseA)).send({ patientId: f.patientB });
+    expect(taken.status).toBe(409);
+    const otherHospital = await request(app.getHttpServer()).post(`/api/wards/beds/${bed2.id}/admit`).set(auth(adminB)).send({ patientId: f.patientB });
     expect(otherHospital.status).toBe(403);
 
     const overview = await request(app.getHttpServer()).get('/api/wards').set(auth(nurseA));
-    expect(overview.body.data).toMatchObject({ totalBeds: 4, occupiedBeds: 3, occupancyRate: 75 });
-
+    expect(overview.body.data).toMatchObject({ totalBeds: 3, occupiedBeds: 1, occupancyRate: 33 });
     const dash = await request(app.getHttpServer()).get('/api/analytics/dashboard').set(auth(adminA));
-    expect(dash.body.data.kpis).toMatchObject({ totalBeds: 4, occupiedBeds: 3 });
+    expect(dash.body.data.kpis).toMatchObject({ totalBeds: 3, occupiedBeds: 1 });
+    const admissions = await request(app.getHttpServer()).get('/api/wards/admissions').set(auth(nurseA));
+    expect(admissions.body.data).toHaveLength(1);
+
+    const discharge = await request(app.getHttpServer()).post(`/api/wards/beds/${bed1.id}/discharge`).set(auth(nurseA));
+    expect(discharge.status).toBe(201);
+    expect(discharge.body.data.status).toBe('CLEANING');
+    const blocked = await request(app.getHttpServer()).post(`/api/wards/beds/${bed1.id}/admit`).set(auth(nurseA)).send({ patientId: f.patientB });
+    expect(blocked.status).toBe(409);
+    const ready = await request(app.getHttpServer()).patch(`/api/wards/beds/${bed1.id}/status`).set(auth(nurseA)).send({ status: 'AVAILABLE' });
+    expect(ready.status).toBe(200);
   });
 
   it('a nurse records vitals with auto-calculated BMI; the patient can read them', async () => {

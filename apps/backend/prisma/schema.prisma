@@ -136,6 +136,8 @@ model Hospital {
   rooms       Room[]
   vaccinations Vaccination[]
   vitalSigns   VitalSign[]
+  beds         Bed[]
+  insuranceClaims InsuranceClaim[]
 
   @@index([isActive])
   @@index([isVerified])
@@ -296,6 +298,8 @@ model Patient {
   payments       Payment[]
   vaccinations   Vaccination[]
   vitalSigns     VitalSign[]
+  bed            Bed?
+  insuranceClaims InsuranceClaim[]
 
   @@index([hospitalId])
   @@index([patientId])
@@ -397,6 +401,8 @@ model Room {
   isActive     Boolean     @default(true)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+
+  beds         Bed[]
 
   @@unique([hospitalId, roomNumber])
   @@index([hospitalId])
@@ -741,6 +747,7 @@ model Invoice {
 
   items   InvoiceItem[]
   payments Payment[]
+  insuranceClaims InsuranceClaim[]
 
   @@index([hospitalId])
   @@index([patientId])
@@ -896,4 +903,71 @@ model VitalSign {
   @@index([hospitalId])
   @@index([patientId, recordedAt])
   @@map("vital_signs")
+}
+
+enum BedStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+}
+
+/// Individual bed inside a room. A patient can occupy at most one bed (unique patientId).
+model Bed {
+  id             String    @id @default(uuid())
+  hospitalId     String
+  hospital       Hospital  @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  roomId         String
+  room           Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  label          String
+  status         BedStatus @default(AVAILABLE)
+  patientId      String?   @unique
+  patient        Patient?  @relation(fields: [patientId], references: [id])
+  admittedAt     DateTime?
+  admissionNotes String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([roomId, label])
+  @@index([hospitalId])
+  @@map("beds")
+}
+
+enum ClaimStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  PARTIALLY_APPROVED
+  REJECTED
+  SETTLED
+}
+
+/// Insurance / TPA (third-party administrator) claim raised against an invoice.
+model InsuranceClaim {
+  id              String      @id @default(uuid())
+  claimNumber     String      @unique
+  hospitalId      String
+  hospital        Hospital    @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  invoiceId       String
+  invoice         Invoice     @relation(fields: [invoiceId], references: [id])
+  patientId       String
+  patient         Patient     @relation(fields: [patientId], references: [id])
+  insurer         String
+  tpaName         String?
+  policyNumber    String
+  claimedAmount   Decimal     @db.Decimal(12, 2)
+  approvedAmount  Decimal?    @db.Decimal(12, 2)
+  status          ClaimStatus @default(SUBMITTED)
+  notes           String?     @db.Text
+  decisionNote    String?     @db.Text
+  submittedById   String
+  reviewedById    String?
+  submittedAt     DateTime    @default(now())
+  decidedAt       DateTime?
+  settledAt       DateTime?
+  updatedAt       DateTime    @updatedAt
+
+  @@index([hospitalId, status])
+  @@index([invoiceId])
+  @@map("insurance_claims")
 }

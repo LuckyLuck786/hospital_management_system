@@ -53,9 +53,89 @@ export async function seedExtras(prisma: PrismaClient) {
         for (const [roomNumber, type, capacity] of plan.rooms) {
           const occupiedBeds = Math.min(capacity, rand(Math.floor(capacity * 0.3), capacity));
           await prisma.room.create({
-            data: { hospitalId: h.id, departmentId: dept.id, roomNumber, type, capacity, occupiedBeds, isOccupied: occupiedBeds > 0 },
+            data: {
+              hospitalId: h.id,
+              departmentId: dept.id,
+              roomNumber,
+              type,
+              capacity,
+              occupiedBeds,
+              isOccupied: occupiedBeds > 0,
+              beds: {
+                create: Array.from({ length: capacity }, (_, i) => ({
+                  hospitalId: h.id,
+                  label: `Bed ${i + 1}`,
+                  status: i < occupiedBeds ? ('OCCUPIED' as const) : ('AVAILABLE' as const),
+                })),
+              },
+            },
           });
         }
+      }
+    }
+
+    // Put real patients into occupied beds that have nobody assigned (e.g. beds back-filled by migration)
+    const unassigned = await prisma.bed.findMany({ where: { hospitalId: h.id, status: 'OCCUPIED', patientId: null }, orderBy: { label: 'asc' } });
+    if (unassigned.length) {
+      // Only ~40% of patients are inpatients; leftover occupied beds become free
+      const total = await prisma.patient.count({ where: { hospitalId: h.id, deletedAt: null } });
+      const admitted = await prisma.bed.count({ where: { hospitalId: h.id, patientId: { not: null } } });
+      const free = (await prisma.patient.findMany({ where: { hospitalId: h.id, deletedAt: null, bed: null }, select: { id: true } })).slice(
+        0,
+        Math.max(0, Math.ceil(total * 0.4) - admitted),
+      );
+      const reasons = ['Post-operative observation', 'Pneumonia — IV antibiotics', 'Uncontrolled diabetes', 'Fracture, awaiting surgery', 'Dengue fever monitoring', 'Chest pain under evaluation'];
+      for (const [i, bed] of unassigned.entries()) {
+        const p = free[i];
+        await prisma.bed.update({
+          where: { id: bed.id },
+          data: p
+            ? { patientId: p.id, admittedAt: new Date(Date.now() - rand(1, 96) * 3600 * 1000), admissionNotes: reasons[i % reasons.length] }
+            : { status: 'AVAILABLE' },
+        });
+      }
+      for (const room of await prisma.room.findMany({ where: { hospitalId: h.id }, select: { id: true } })) {
+        const n = await prisma.bed.count({ where: { roomId: room.id, status: 'OCCUPIED' } });
+        await prisma.room.update({ where: { id: room.id }, data: { occupiedBeds: n, isOccupied: n > 0 } });
+      }
+    }
+
+    // Insurance / TPA claims in various stages (no settlements, so invoices stay untouched)
+    const filer = await prisma.user.findFirst({ where: { hospitalId: h.id, role: { in: ['ACCOUNTANT', 'RECEPTIONIST', 'HOSPITAL_ADMIN'] } }, select: { id: true } });
+    if (filer && (await prisma.insuranceClaim.count({ where: { hospitalId: h.id } })) === 0) {
+      const unpaid = await prisma.invoice.findMany({ where: { hospitalId: h.id, status: 'FINALIZED' }, orderBy: { createdAt: 'desc' }, take: 5 });
+      const plans: Array<[string, string | null, string, string | null, number | null]> = [
+        ['Star Health', 'MediAssist', 'SUBMITTED', null, null],
+        ['HDFC ERGO', 'Paramount Health', 'UNDER_REVIEW', null, null],
+        ['ICICI Lombard', null, 'APPROVED', null, 1],
+        ['Niva Bupa', 'Vidal Health', 'PARTIALLY_APPROVED', 'Consumables not covered under policy', 0.7],
+        ['Care Health', 'FHPL', 'REJECTED', 'Waiting period for this condition has not ended', 0],
+      ];
+      const base = await prisma.insuranceClaim.count();
+      for (const [i, inv] of unpaid.entries()) {
+        const [insurer, tpaName, status, decisionNote, ratio] = plans[i % plans.length];
+        const policyNumber = `${insurer.split(' ')[0].toUpperCase()}-${rand(100000, 999999)}`;
+        const claimed = Number(inv.balanceAmount);
+        await prisma.insuranceClaim.create({
+          data: {
+            claimNumber: `CLM-${new Date().getFullYear()}-${String(base + i + 1).padStart(5, '0')}`,
+            hospitalId: h.id,
+            invoiceId: inv.id,
+            patientId: inv.patientId,
+            insurer,
+            tpaName,
+            policyNumber,
+            claimedAmount: claimed,
+            approvedAmount: ratio == null ? null : Math.round(claimed * ratio),
+            status: status as any,
+            decisionNote,
+            submittedById: filer.id,
+            reviewedById: ratio == null && status === 'SUBMITTED' ? null : filer.id,
+            submittedAt: new Date(Date.now() - (i + 1) * 2 * 24 * 3600 * 1000),
+            decidedAt: ratio == null ? null : new Date(Date.now() - i * 24 * 3600 * 1000),
+          },
+        });
+        await prisma.patient.update({ where: { id: inv.patientId }, data: { insuranceProvider: insurer, insurancePolicyNumber: policyNumber } });
       }
     }
 

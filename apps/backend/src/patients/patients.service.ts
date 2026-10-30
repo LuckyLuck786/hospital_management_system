@@ -76,6 +76,7 @@ export class PatientsService {
             department: { select: { name: true } },
           },
         },
+        bed: { select: { label: true, admittedAt: true, admissionNotes: true, room: { select: { roomNumber: true, type: true } } } },
         _count: { select: { appointments: true, invoices: true, medicalRecords: true } },
       },
     });

@@ -37,6 +37,8 @@ export async function createApp(): Promise<INestApplication> {
 export async function resetDb() {
   await prisma.$transaction([
     prisma.auditLog.deleteMany(),
+    prisma.insuranceClaim.deleteMany(),
+    prisma.bed.deleteMany(),
     prisma.vaccination.deleteMany(),
     prisma.vitalSign.deleteMany(),
     prisma.room.deleteMany(),

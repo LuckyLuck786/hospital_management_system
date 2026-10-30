@@ -25,6 +25,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
 import { WardsModule } from './wards/wards.module';
 import { AuditModule } from './audit/audit.module';
+import { InsuranceModule } from './insurance/insurance.module';
 import { PrismaModule } from './common/prisma.module';
 import { RedisModule } from './common/redis.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -65,6 +66,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     SearchModule,
     WardsModule,
     AuditModule,
+    InsuranceModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
