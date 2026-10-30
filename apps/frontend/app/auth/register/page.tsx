@@ -7,6 +7,7 @@ import { z } from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { AuthShell } from "@/components/shared/auth-shell";
 import {
   Stethoscope,
   Eye,
@@ -45,8 +46,8 @@ export default function RegisterPage() {
     setError("");
     try {
       await api.post("/auth/register", { ...data, role: "PATIENT" });
-      setSuccess("Registration successful! Please verify your email.");
-      setTimeout(() => router.push("/auth/login"), 2000);
+      setSuccess("Account created! We emailed you a 6-digit code.");
+      setTimeout(() => router.push(`/auth/verify-email?email=${encodeURIComponent(data.email)}`), 1200);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || "Registration failed");
     } finally {
@@ -55,21 +56,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-medical-50 px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="card space-y-6">
-          <div className="text-center">
-            <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Stethoscope className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-primary-900">
-              Create Account
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Register as a patient on MedCore HMS
-            </p>
-          </div>
-
+    <AuthShell title="Create your patient account" subtitle="Book visits, see reports and pay bills online.">
+      <div className="space-y-5">
           {error && (
             <div className="flex items-center gap-2 text-red-600 bg-red-50 px-4 py-3 rounded-lg text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -194,8 +182,7 @@ export default function RegisterPage() {
               Sign in
             </Link>
           </div>
-        </div>
       </div>
-    </div>
+    </AuthShell>
   );
 }

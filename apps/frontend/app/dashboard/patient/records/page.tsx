@@ -1,27 +1,36 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
-import { formatDate } from "@/lib/roles";
-import { FileText, HeartPulse, Stethoscope, Activity, Droplets } from "lucide-react";
+import { formatDate, doctorName } from "@/lib/roles";
+import { FileText, HeartPulse, Stethoscope, Activity, Droplets, Paperclip, Syringe } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { VaccinationsPanel, VitalsPanel } from "@/components/modules/patient-panels";
 
 export default function PatientRecordsPage() {
   const { user } = useAuthStore();
+  const [tab, setTab] = useState<"visits" | "vitals" | "vaccinations">("visits");
+
+  const { data: me } = useQuery({
+    queryKey: ["auth-me"],
+    queryFn: async () => (await api.get("/auth/me")).data.data,
+  });
+  const patientId: string | undefined = me?.patient?.id;
 
   const { data: records, isLoading, isError, refetch } = useQuery({
-    queryKey: ["my-records"],
-    queryFn: async () => {
-      // Resolve own patient profile, then fetch records
-      const me = await api.get("/auth/me");
-      const patientId = me.data.data.patient?.id;
-      if (!patientId) return [];
-      const res = await api.get(`/medical-records/patient/${patientId}`);
-      return res.data.data;
-    },
+    queryKey: ["my-records", patientId],
+    queryFn: async () => (await api.get(`/medical-records/patient/${patientId}`)).data.data,
+    enabled: !!patientId,
   });
+
+  const openAttachment = async (recordId: string, attachmentId: string) => {
+    const res = await api.get(`/medical-records/${recordId}/attachments/${attachmentId}/url`);
+    window.open(res.data.data.url, "_blank", "noopener");
+  };
 
   const vitals = (r: any): Array<{ label: string; icon: any; value: any; unit: string }> => [
     { label: "BP", icon: HeartPulse, value: r.vitalsBloodPressureSystolic ? `${r.vitalsBloodPressureSystolic}/${r.vitalsBloodPressureDiastolic}` : null, unit: "mmHg" },
@@ -35,11 +44,35 @@ export default function PatientRecordsPage() {
     <div className="space-y-6">
       <PageHeader title="My Medical Records" description={`Your health history at MedCore. Welcome, ${user?.firstName}.`} />
 
-      {isLoading ? (
+      <div className="flex gap-1 overflow-x-auto border-b border-gray-200">
+        {([
+          ["visits", "Consultations", Stethoscope],
+          ["vitals", "Vitals & trends", HeartPulse],
+          ["vaccinations", "Vaccinations", Syringe],
+        ] as const).map(([k, label, Icon]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={cn(
+              "-mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium",
+              tab === k ? "border-primary-600 text-primary-700" : "border-transparent text-gray-500 hover:text-gray-800",
+            )}
+          >
+            <Icon className="h-4 w-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "vitals" && patientId && <VitalsPanel patientId={patientId} />}
+      {tab === "vaccinations" && patientId && <VaccinationsPanel patientId={patientId} />}
+
+      {tab !== "visits" ? null : !patientId && !me ? (
+        <LoadingState />
+      ) : isLoading ? (
         <LoadingState />
       ) : isError ? (
         <ErrorState message="Could not load your records." onRetry={() => refetch()} />
-      ) : records?.length === 0 ? (
+      ) : !records?.length ? (
         <EmptyState
           icon={FileText}
           title="No medical records yet"
@@ -53,7 +86,7 @@ export default function PatientRecordsPage() {
                 <div className="flex items-center gap-2">
                   <Stethoscope className="w-4 h-4 text-primary-600" />
                   <span className="text-sm font-semibold text-gray-800">
-                    Dr. {r.doctor?.user?.firstName} {r.doctor?.user?.lastName}
+                    {doctorName(r.doctor?.user)}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-500">
@@ -63,7 +96,7 @@ export default function PatientRecordsPage() {
               </div>
 
               <div className="px-5 py-4">
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                   {vitals(r).map((v) => (
                     <div key={v.label} className="bg-gray-50 rounded-lg p-3 text-center">
                       <p className="text-[11px] text-gray-400">{v.label}</p>
@@ -74,7 +107,7 @@ export default function PatientRecordsPage() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="grid gap-4 mt-4 sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-gray-400">Chief Complaint</p>
                     <p className="text-sm text-gray-800 mt-0.5">{r.chiefComplaint || "—"}</p>
@@ -86,12 +119,12 @@ export default function PatientRecordsPage() {
                       {r.icd10Code && <span className="text-xs text-gray-400 ml-1">({r.icd10Code})</span>}
                     </p>
                   </div>
-                  <div className="col-span-2">
+                  <div className="lg:col-span-2">
                     <p className="text-xs text-gray-400">Treatment Plan</p>
                     <p className="text-sm text-gray-800 mt-0.5">{r.treatmentPlan || "—"}</p>
                   </div>
                   {r.prescriptions?.length > 0 && (
-                    <div className="col-span-2">
+                    <div className="lg:col-span-2">
                       <p className="text-xs text-gray-400">Prescriptions</p>
                       <div className="flex flex-wrap gap-2 mt-1.5">
                         {r.prescriptions.map((p: any) =>
@@ -101,6 +134,22 @@ export default function PatientRecordsPage() {
                             </span>
                           )),
                         )}
+                      </div>
+                    </div>
+                  )}
+                  {r.attachments?.length > 0 && (
+                    <div className="lg:col-span-2">
+                      <p className="text-xs text-gray-400">Documents</p>
+                      <div className="mt-1.5 flex flex-wrap gap-2">
+                        {r.attachments.map((a: any) => (
+                          <button
+                            key={a.id}
+                            onClick={() => openAttachment(r.id, a.id)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 hover:border-primary-300 hover:text-primary-700"
+                          >
+                            <Paperclip className="h-3.5 w-3.5" /> {a.fileName}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}

@@ -39,7 +39,7 @@ export default function ReceptionistBillingPage() {
     <div className="space-y-6">
       <PageHeader title="Billing" description="Finalise invoices and record payments." />
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <p className="text-sm text-gray-500">Showing</p>
           <p className="text-2xl font-bold text-gray-900">{invoices.length} invoices</p>

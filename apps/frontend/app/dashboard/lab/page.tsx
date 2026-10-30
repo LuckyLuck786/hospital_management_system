@@ -7,7 +7,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Modal } from "@/components/shared/modal";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
-import { formatDate, formatCurrency } from "@/lib/roles";
+import { formatDate, formatCurrency, doctorName } from "@/lib/roles";
 import {
   FlaskConical,
   TestTube,
@@ -87,7 +87,7 @@ export default function LabDashboard() {
         <p className="text-gray-500">Lab orders, sample collection, and result approval workflow.</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total Orders" value={ordersList.length} icon={TestTube} color="blue" />
         <StatCard label="Awaiting Sample" value={countBy("ORDERED")} icon={Microscope} color="amber" />
         <StatCard label="Processing" value={countBy("SAMPLE_COLLECTED") + countBy("PROCESSING")} icon={FlaskConical} color="purple" />
@@ -138,7 +138,7 @@ export default function LabDashboard() {
                     </div>
                     <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
                       <Stethoscope className="w-3.5 h-3.5" />
-                      Dr. {order.medicalRecord?.doctor?.user?.firstName} {order.medicalRecord?.doctor?.user?.lastName}
+                      {doctorName(order.medicalRecord?.doctor?.user)}
                       <span className="text-gray-300">•</span>
                       {formatDate(order.createdAt)}
                     </p>

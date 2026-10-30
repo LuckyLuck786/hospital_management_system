@@ -49,14 +49,14 @@ export default function PatientDashboard() {
         <p className="text-gray-500">Welcome back, {user?.firstName}</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Upcoming Appointments" value={upcoming.length} icon={CalendarDays} color="blue" />
         <StatCard label="Medical Records" value={records?.length || 0} icon={FileText} color="green" />
         <StatCard label="Prescriptions" value={prescriptions.length} icon={Pill} color="purple" />
         <StatCard label="Pending Bills" value={formatCurrency(pendingBills)} icon={CreditCard} color="orange" />
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid gap-6 lg:grid-cols-2">
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Recent Appointments</h2>

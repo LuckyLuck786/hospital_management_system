@@ -40,3 +40,23 @@ export function formatTime(time: string) {
   const h12 = h % 12 || 12;
   return `${h12}:${minutes} ${ampm}`;
 }
+
+/** Seeded doctor first names already carry "Dr." — normalise so it is shown exactly once. */
+export function doctorName(user?: { firstName?: string; lastName?: string } | null) {
+  if (!user) return 'Doctor';
+  const first = (user.firstName || '').replace(/^dr\.?\s*/i, '');
+  return `Dr. ${[first, user.lastName].filter(Boolean).join(' ')}`.trim();
+}
+
+/** Landing page per role after sign-in. */
+export const ROLE_HOME: Record<string, string> = {
+  SUPER_ADMIN: "/dashboard/admin",
+  HOSPITAL_ADMIN: "/dashboard/admin",
+  DOCTOR: "/dashboard/doctor",
+  PATIENT: "/dashboard/patient",
+  RECEPTIONIST: "/dashboard/receptionist",
+  NURSE: "/dashboard/nurse",
+  LAB_TECHNICIAN: "/dashboard/lab",
+  PHARMACIST: "/dashboard/pharmacy",
+  ACCOUNTANT: "/dashboard/accountant",
+};

@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { formatDate, formatTime } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import Link from "next/link";
+import { FollowUpCalendar } from "@/components/modules/followup-calendar";
 import {
   CalendarDays,
   Users,
@@ -77,11 +78,11 @@ export default function DoctorDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
-        <p className="text-gray-500">Welcome back, Dr. {user?.lastName}</p>
+        <p className="text-gray-500">Welcome back, Dr. {user?.lastName} · {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -144,7 +145,7 @@ export default function DoctorDashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Pending lab approvals */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
@@ -178,6 +179,8 @@ export default function DoctorDashboard() {
             </div>
           )}
         </div>
+
+        <FollowUpCalendar />
 
         {/* Recent prescriptions */}
         <div className="card">
@@ -221,7 +224,7 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Link
           href="/dashboard/doctor/appointments"
           className="card flex items-center gap-4 hover:shadow-md transition-shadow group"

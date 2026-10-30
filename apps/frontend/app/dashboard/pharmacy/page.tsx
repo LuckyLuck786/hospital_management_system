@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { StatCard } from "@/components/shared/stat-card";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
-import { formatCurrency, formatDate } from "@/lib/roles";
+import { formatCurrency, formatDate, doctorName } from "@/lib/roles";
 import { Pill, PackageX, AlertTriangle, Layers, PackageCheck, FlaskConical } from "lucide-react";
 
 export default function PharmacyDashboard() {
@@ -46,7 +46,7 @@ export default function PharmacyDashboard() {
         <p className="text-gray-500">Welcome, {user?.firstName}. Inventory overview.</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Medicines" value={medicines?.length || 0} icon={Pill} color="blue" />
         <StatCard label="Units in Stock" value={totalStock} icon={Layers} color="green" />
         <StatCard label="Low Stock Alerts" value={lowStock.length} icon={AlertTriangle} color="red" />
@@ -76,7 +76,7 @@ export default function PharmacyDashboard() {
                     <span className="text-xs text-gray-400 font-mono ml-2">{p.prescriptionNumber}</span>
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Dr. {p.doctor?.user?.firstName} {p.doctor?.user?.lastName} • {formatDate(p.createdAt)}
+                    {doctorName(p.doctor?.user)} • {formatDate(p.createdAt)}
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {p.items.map((i: any) => (

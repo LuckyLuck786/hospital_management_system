@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Modal } from "@/components/shared/modal";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
-import { formatDate, formatTime } from "@/lib/roles";
+import { formatDate, formatTime, doctorName } from "@/lib/roles";
 import { CalendarDays, Plus, CheckCircle2, XCircle, AlertCircle, UserPlus } from "lucide-react";
 
 export default function ReceptionistAppointmentsPage() {
@@ -216,7 +216,7 @@ function BookModal({ open, onClose, onDone }: { open: boolean; onClose: () => vo
             <option value="">Select doctor</option>
             {doctors?.map((d: any) => (
               <option key={d.id} value={d.id}>
-                Dr. {d.user.firstName} {d.user.lastName} — {d.specialization}
+                {doctorName(d.user)} — {d.specialization}
               </option>
             ))}
           </select>

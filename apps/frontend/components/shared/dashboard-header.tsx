@@ -13,15 +13,18 @@ import {
   Pill,
   CalendarDays,
   Loader2,
+  Menu,
 } from "lucide-react";
 import { formatDate } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
+import { useUiStore } from "@/store/ui-store";
 
 export function DashboardHeader() {
   const { user } = useAuthStore();
+  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -116,35 +119,43 @@ export function DashboardHeader() {
       label: "Patients",
       icon: Users,
       items: results?.patients || [],
-      href: () => `${dashboard}/patients`,
+      href: (i) => `/dashboard/patients/${i.id}`,
     },
     {
       key: "doctors",
       label: "Doctors",
       icon: Stethoscope,
       items: results?.doctors || [],
-      href: () => `${dashboard}/doctors`,
+      href: () => (["SUPER_ADMIN", "HOSPITAL_ADMIN"].includes(user?.role || "") ? "/dashboard/admin/doctors" : "/dashboard/receptionist/appointments"),
     },
     {
       key: "medicines",
       label: "Medicines",
       icon: Pill,
       items: results?.medicines || [],
-      href: () => (user?.role === "PHARMACIST" ? `${dashboard}` : "#"),
+      href: () => (user?.role === "PHARMACIST" ? "/dashboard/pharmacy/inventory" : "#"),
     },
     {
       key: "appointments",
       label: "Appointments",
       icon: CalendarDays,
       items: results?.appointments || [],
-      href: () => `${dashboard}/appointments`,
+      href: () =>
+        user?.role === "DOCTOR"
+          ? "/dashboard/doctor/appointments"
+          : user?.role === "RECEPTIONIST" || user?.role === "HOSPITAL_ADMIN"
+            ? "/dashboard/receptionist/appointments"
+            : dashboard,
     },
   ];
   const hasAny = sections.some((s) => s.items.length > 0);
   const showSearch = user?.role !== "PATIENT";
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <button className="lg:hidden -ml-1 p-2 rounded-lg text-gray-500 hover:bg-gray-100" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+        <Menu className="w-5 h-5" />
+      </button>
       <div className="relative max-w-md w-full" ref={searchRef}>
         {showSearch ? (
           <>

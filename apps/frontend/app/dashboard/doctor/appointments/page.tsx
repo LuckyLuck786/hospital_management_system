@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
@@ -192,6 +192,31 @@ function ConsultationModal({ appointment, onClose, onDone }: { appointment: any;
   const [labTests, setLabTests] = useState<Array<{ id: string; name: string; code: string; price: number; unit?: string }>>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [triageNote, setTriageNote] = useState("");
+
+  // Pre-fill from today's nurse triage so vitals are not taken twice
+  const { data: latestVitals } = useQuery({
+    queryKey: ["vitals", appointment.patientId, "latest"],
+    queryFn: async () => (await api.get(`/patients/${appointment.patientId}/vitals?limit=1`)).data.data?.[0] ?? null,
+    enabled: !!appointment.patientId,
+  });
+  useEffect(() => {
+    if (!latestVitals) return;
+    if (new Date(latestVitals.recordedAt).toDateString() !== new Date().toDateString()) return;
+    const str = (v: any) => (v == null ? "" : String(v));
+    setVitals((cur) => ({
+      systolic: cur.systolic || str(latestVitals.systolic),
+      diastolic: cur.diastolic || str(latestVitals.diastolic),
+      pulse: cur.pulse || str(latestVitals.pulse),
+      temperature: cur.temperature || str(latestVitals.temperature),
+      spO2: cur.spO2 || str(latestVitals.spo2),
+      height: cur.height || str(latestVitals.height),
+      weight: cur.weight || str(latestVitals.weight),
+    }));
+    setTriageNote(
+      `Pre-filled from triage at ${new Date(latestVitals.recordedAt).toLocaleTimeString("en-IN", { timeStyle: "short" })}${latestVitals.notes ? ` — “${latestVitals.notes}”` : ""}`,
+    );
+  }, [latestVitals]);
 
   const { data: medicines } = useQuery({
     queryKey: ["medicines", medSearch],
@@ -300,7 +325,8 @@ function ConsultationModal({ appointment, onClose, onDone }: { appointment: any;
           <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-3">
             <Stethoscope className="w-4 h-4 text-primary-600" /> Vitals
           </h4>
-          <div className="grid grid-cols-4 gap-3">
+          {triageNote && <p className="mb-3 rounded-lg bg-medical-50 px-3 py-2 text-xs text-medical-600">{triageNote}</p>}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {vitalsField("systolic", "BP Systolic", "120")}
             {vitalsField("diastolic", "BP Diastolic", "80")}
             {vitalsField("pulse", "Pulse (bpm)", "72")}

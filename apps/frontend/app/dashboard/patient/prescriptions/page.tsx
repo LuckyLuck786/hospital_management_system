@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
-import { formatDate } from "@/lib/roles";
+import { formatDate, doctorName } from "@/lib/roles";
 import { downloadPdf } from "@/lib/download-pdf";
 import { Pill, Printer, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -50,7 +50,7 @@ export default function PatientPrescriptionsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500">
-                    Dr. {p.doctor?.user?.firstName} {p.doctor?.user?.lastName} · {formatDate(p.recordDate)}
+                    {doctorName(p.doctor?.user)} · {formatDate(p.recordDate)}
                   </span>
                   <button
                     onClick={async () => {

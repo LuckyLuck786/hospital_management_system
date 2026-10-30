@@ -21,7 +21,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Auth endpoints report their own 401s (bad password, unverified email) — never try a refresh for them
+    const isAuthCall = String(originalRequest?.url || '').startsWith('/auth/');
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthCall) {
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem('refreshToken');
@@ -36,7 +38,8 @@ api.interceptors.response.use(
       } catch (refreshError) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        localStorage.removeItem('medcore-auth');
+        window.location.href = '/auth/login';
         return Promise.reject(refreshError);
       }
     }

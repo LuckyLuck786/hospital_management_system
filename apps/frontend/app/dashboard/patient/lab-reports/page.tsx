@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
-import { formatDate } from "@/lib/roles";
+import { formatDate, doctorName } from "@/lib/roles";
 import { downloadPdf } from "@/lib/download-pdf";
 import { FlaskConical, AlertTriangle, FileDown, Loader2 } from "lucide-react";
 
@@ -62,8 +62,7 @@ export default function PatientLabReports() {
                       )}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Ordered {formatDate(order.createdAt)} • Dr. {order.medicalRecord?.doctor?.user?.firstName}{" "}
-                      {order.medicalRecord?.doctor?.user?.lastName}
+                      Ordered {formatDate(order.createdAt)} • {doctorName(order.medicalRecord?.doctor?.user)}
                     </p>
                     <p className="text-sm text-gray-700 mt-2">
                       {order.tests.map((t: any) => t.testName).join(" • ")}

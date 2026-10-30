@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingState } from "@/components/shared/states";
-import { formatDate, formatCurrency } from "@/lib/roles";
+import { formatDate, formatCurrency, doctorName } from "@/lib/roles";
 import {
   Users,
   Stethoscope,
@@ -17,6 +17,8 @@ import {
   ArrowRight,
   Pill,
   Microscope,
+  BedDouble,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -60,11 +62,20 @@ export default function AdminDashboard() {
   });
 
   const kpis = dash?.kpis;
+  const isSuper = user?.role === "SUPER_ADMIN";
+  const bedRate = kpis?.totalBeds ? Math.round((kpis.occupiedBeds / kpis.totalBeds) * 100) : 0;
   const stats = [
-    { label: "Total Patients", value: kpis?.patientsTotal || 0, icon: Users, color: "blue" },
+    { label: isSuper ? "Patients (all hospitals)" : "Total Patients", value: kpis?.patientsTotal || 0, icon: Users, color: "blue", hint: kpis?.patientsToday ? `+${kpis.patientsToday} today` : undefined },
     { label: "Active Doctors", value: kpis?.doctorsTotal || 0, icon: Stethoscope, color: "green" },
     { label: "Today's Appointments", value: kpis?.appointmentsToday || 0, icon: CalendarDays, color: "purple" },
     { label: "Revenue Today", value: formatCurrency(kpis?.revenueToday || 0), icon: TrendingUp, color: "orange" },
+    {
+      label: "Beds Occupied",
+      value: kpis?.totalBeds ? `${kpis.occupiedBeds}/${kpis.totalBeds}` : "—",
+      icon: BedDouble,
+      color: bedRate >= 85 ? "red" : "teal",
+      hint: kpis?.totalBeds ? `${bedRate}% occupancy` : "No wards configured",
+    },
   ];
 
   const deptData = (dash?.departments || []).map((d: any) => ({
@@ -75,19 +86,48 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Hospital Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{isSuper ? "Platform Overview" : "Hospital Dashboard"}</h1>
         <p className="text-gray-500">
           Welcome back, {user?.firstName} · {formatDate(new Date().toISOString())}
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
         {stats.map((stat) => (
-          <StatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} color={stat.color} />
+          <StatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} color={stat.color} hint={stat.hint} />
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      {!!dash?.departmentOccupancy?.length && (
+        <div className="card">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Building2 className="h-5 w-5 text-primary-600" /> Department occupancy
+            </h2>
+            <Link href="/dashboard/wards" className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700">
+              Manage beds <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {dash.departmentOccupancy.map((d: any) => {
+              // heat map: colour intensity follows occupancy
+              const tone =
+                d.rate >= 90 ? "bg-red-500 text-white" : d.rate >= 75 ? "bg-orange-400 text-white" : d.rate >= 50 ? "bg-amber-200 text-amber-900" : d.rate >= 25 ? "bg-medical-100 text-medical-600" : "bg-gray-100 text-gray-600";
+              return (
+                <div key={d.name} className={`rounded-xl p-4 ${tone}`}>
+                  <p className="truncate text-sm font-medium">{d.name}</p>
+                  <p className="mt-1 text-2xl font-bold">{d.rate}%</p>
+                  <p className="text-xs opacity-80">
+                    {d.occupied}/{d.beds} beds
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Revenue trend */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
@@ -205,7 +245,7 @@ export default function AdminDashboard() {
                         {apt.patient?.user.firstName} {apt.patient?.user.lastName}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {apt.scheduledTime} · Dr. {apt.doctor?.user.lastName}
+                        {apt.scheduledTime} · {doctorName(apt.doctor?.user)}
                       </p>
                     </div>
                   </div>
@@ -218,7 +258,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Low stock + recent activity */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid gap-6 lg:grid-cols-2">
         <div className="card">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Pill className="w-5 h-5 text-amber-500" /> Low Stock Alerts
