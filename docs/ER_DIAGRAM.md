@@ -1,6 +1,6 @@
 # MedCore HMS — ER Diagram
 
-Generated from `apps/backend/prisma/schema.prisma` by `scripts/gen-docs.py`. 33 models, 12 enums. Renders on GitHub.
+Generated from `apps/backend/prisma/schema.prisma` by `scripts/gen-docs.py`. 34 models, 12 enums. Renders on GitHub.
 
 ```mermaid
 erDiagram
@@ -479,6 +479,7 @@ erDiagram
     String hospitalId FK
     String invoiceId FK
     String patientId FK
+    String preAuthorizationId FK
     String insurer
     String tpaName
     String policyNumber
@@ -492,6 +493,26 @@ erDiagram
     DateTime submittedAt
     DateTime decidedAt
     DateTime settledAt
+    DateTime updatedAt
+  }
+  PreAuthorization {
+    String id PK
+    String requestNumber
+    String hospitalId FK
+    String patientId FK
+    String insurer
+    String tpaName
+    String policyNumber
+    String treatment
+    Decimal estimatedAmount
+    Decimal approvedAmount
+    enum_ClaimStatus status
+    DateTime validUntil
+    String decisionNote
+    String requestedById FK
+    String reviewedById FK
+    DateTime createdAt
+    DateTime decidedAt
     DateTime updatedAt
   }
   Appointment |o--o{ Invoice : "appointment"
@@ -518,6 +539,7 @@ erDiagram
   Hospital ||--o{ MedicalRecord : "hospital"
   Hospital ||--o{ Medicine : "hospital"
   Hospital ||--o{ Patient : "hospital"
+  Hospital ||--o{ PreAuthorization : "hospital"
   Hospital ||--o{ Prescription : "hospital"
   Hospital ||--o{ Room : "hospital"
   Hospital ||--o{ Vaccination : "hospital"
@@ -540,8 +562,10 @@ erDiagram
   Patient ||--o{ LabOrder : "patient"
   Patient ||--o{ MedicalRecord : "patient"
   Patient ||--o{ Payment : "patient"
+  Patient ||--o{ PreAuthorization : "patient"
   Patient ||--o{ Vaccination : "patient"
   Patient ||--o{ VitalSign : "patient"
+  PreAuthorization |o--o{ InsuranceClaim : "preAuthorization"
   Prescription ||--o{ PrescriptionItem : "prescription"
   Room ||--o{ Bed : "room"
   User |o--o{ Address : "user"

@@ -409,9 +409,23 @@ vaccinations to an existing database idempotently.
   submit, server error), per-role sidebar links, family-history toggles, shared UI components and helpers. Run with
   `pnpm --filter ./apps/frontend test`; they run in CI too.
 
+## Phase 9 — Pre-authorisation, bed transfers & browser E2E tests (implemented)
+
+- **Cashless pre-authorisation** — doctors, reception, accounts or admins request insurer approval of an estimated
+  treatment cost before admission (from the patient chart or the claims page). Accounts record the insurer's decision
+  (approve, partially approve with an amount, or reject with a reason) and a validity date; the patient is notified.
+  An approved pre-authorisation can be linked when the final claim is filed, which pre-fills the insurer and policy.
+- **One-step bed transfer** — move an admitted patient to any free bed (e.g. ward → ICU) in a single transaction; the
+  admission time and notes move with the patient, the old bed goes to cleaning, and a concurrent grab of the target bed
+  is rejected.
+- **Playwright browser tests** (`apps/frontend/e2e`, 13 journeys on desktop and mobile): landing page, login validation
+  and wrong password, forgot password, sign-in redirect, admin KPIs and audit log, doctor chart, pharmacist navigation
+  and inventory, patient records and bills, nurse vitals with BMI, admit → transfer → discharge → ready, claim review,
+  filing a claim from billing, mobile navigation drawer. They run in CI against a freshly migrated and seeded stack.
+
 ### Tests & coverage
 
-51 integration tests in 10 suites (plus 23 frontend component tests) (`apps/backend/test`) cover every PRD mandatory scenario
+52 API integration tests in 10 suites, 25 frontend component tests and 13 Playwright browser journeys (`apps/backend/test`) cover every PRD mandatory scenario
 plus the lab, prescription, admin, onboarding, auth, vaccination, audit and encryption flows.
 
 ```bash
@@ -419,8 +433,8 @@ cd apps/backend && npx jest --config ./test/jest-e2e.json --runInBand --coverage
 # HTML report → apps/backend/coverage/index.html
 ```
 
-Current coverage (backend `src/`, excluding module wiring): **76% lines, 72% statements,
-79% functions**. A snapshot of the HTML report is committed in `docs/coverage/`.
+Current coverage (backend `src/`, excluding module wiring): **77% lines, 73% statements,
+80% functions**. A snapshot of the HTML report is committed in `docs/coverage/`.
 
 ### Documentation
 

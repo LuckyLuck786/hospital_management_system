@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MedCore HMS — Project Submission</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #111827; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1 { font-size: 24pt; margin: 0; color: #1e3a8a; }
+  h2 { font-size: 13.5pt; color: #1e40af; border-bottom: 2px solid #dbeafe; padding-bottom: 4px; margin: 20px 0 8px; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 12px 0 4px; color: #111827; page-break-after: avoid; }
+  p { margin: 4px 0 8px; }
+  ul { margin: 4px 0 8px; padding-left: 18px; }
+  li { margin: 2px 0; }
+  .sub { color: #4b5563; font-size: 11pt; margin-top: 4px; }
+  .hero { background: linear-gradient(135deg, #2563eb, #14b8a6); color: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+  .hero h1 { color: #fff; }
+  .hero .sub { color: #e0f2fe; }
+  .links { display: grid; grid-template-columns: 150px 1fr; gap: 4px 12px; margin-top: 12px; font-size: 10pt; }
+  .links b { color: #e0f2fe; font-weight: 600; }
+  .links a { color: #fff; text-decoration: none; word-break: break-all; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+  .kpi { border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 10px; }
+  .kpi .v { font-size: 15pt; font-weight: 700; color: #1d4ed8; }
+  .kpi .l { font-size: 8.5pt; color: #6b7280; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.5pt; page-break-inside: auto; }
+  th, td { border: 1px solid #e5e7eb; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #eff6ff; color: #1e3a8a; font-weight: 600; }
+  tr { page-break-inside: avoid; }
+  .ok { color: #047857; font-weight: 600; white-space: nowrap; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .box { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; page-break-inside: avoid; }
+  code { background: #f3f4f6; padding: 0 4px; border-radius: 4px; font-size: 9pt; }
+  .small { font-size: 9pt; color: #6b7280; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>MedCore HMS</h1>
+  <div class="sub">Multi-tenant, cloud-native Hospital Management Platform — Full-Stack Internship Project</div>
+  <div class="links">
+    <b>Live application</b><a href="https://medcore-hms-web.vercel.app">https://medcore-hms-web.vercel.app</a>
+    <b>API documentation</b><a href="https://medcore-api-production-b18a.up.railway.app/api/docs">https://medcore-api-production-b18a.up.railway.app/api/docs</a>
+    <b>Source code</b><a href="https://github.com/LuckyLuck786/hospital_management_system">https://github.com/LuckyLuck786/hospital_management_system</a>
+    <b>Author</b><span>Shaik Luqman</span>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="kpi"><div class="v">9</div><div class="l">role-specific workspaces</div></div>
+  <div class="kpi"><div class="v">98</div><div class="l">documented REST endpoints</div></div>
+  <div class="kpi"><div class="v">34</div><div class="l">normalised data models</div></div>
+  <div class="kpi"><div class="v">90</div><div class="l">automated tests (API, UI, browser)</div></div>
+</div>
+
+<h2>1. Overview</h2>
+<p>
+MedCore HMS digitises the complete hospital workflow — registration, appointment scheduling, the doctor's encounter
+(vitals, diagnosis, e-prescription, lab orders), laboratory processing, pharmacy dispensing, ward and bed management,
+billing with online payments and insurance/TPA claims, and real-time notifications — in one secure, role-aware platform.
+Each hospital is an isolated tenant of a single SaaS deployment, so it serves anything from a 30-bed clinic to an
+800-bed multi-speciality chain. All nine roles from the brief (Super Admin, Hospital Admin, Doctor, Nurse, Receptionist,
+Lab Technician, Pharmacist, Accountant, Patient) have their own dashboard and enforced API permissions.
+</p>
+
+<h2>2. Technology stack</h2>
+<table>
+  <tr><th style="width:22%">Layer</th><th>Technology</th></tr>
+  <tr><td>Frontend</td><td>Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, TanStack Query, Zustand, React Hook Form + Zod, Recharts, Socket.IO client</td></tr>
+  <tr><td>Backend</td><td>NestJS 10, TypeScript, Prisma ORM, Passport JWT, BullMQ workers, Socket.IO gateway, Puppeteer PDF rendering, Multer + Sharp uploads</td></tr>
+  <tr><td>Data</td><td>PostgreSQL 16 (row-level multi-tenancy, AES-256-GCM encrypted clinical columns), Redis 7 (sessions, cache, queues)</td></tr>
+  <tr><td>Integrations</td><td>Razorpay (UPI / cards / netbanking + signed webhooks), SMTP / Resend email, Twilio SMS, Google Cloud Storage, optional Sentry</td></tr>
+  <tr><td>DevOps</td><td>Docker + Docker Compose, Nginx reverse proxy, GitHub Actions CI, Vercel (frontend), Railway (API, PostgreSQL, Redis)</td></tr>
+  <tr><td>Testing</td><td>Jest + Supertest integration tests on a real PostgreSQL database; Vitest + Testing Library component tests; Playwright browser end-to-end tests; live smoke test</td></tr>
+</table>
+
+<h2>3. Features delivered</h2>
+<table>
+  <tr><th style="width:24%">Module</th><th>What is implemented</th><th style="width:9%">Status</th></tr>
+  <tr><td>Authentication &amp; RBAC</td><td>Register, login, JWT access (15 min) + rotating refresh tokens in Redis per device, logout, email OTP verification, SMS phone OTP, forgot / reset password by emailed link, bcrypt-12 hashing, guards for all 9 roles, hospital (tenant) isolation on every request.</td><td class="ok">Complete</td></tr>
+  <tr><td>Hospital onboarding</td><td>Super Admin creates and verifies hospitals; admins manage departments, doctors, staff and user accounts.</td><td class="ok">Complete</td></tr>
+  <tr><td>Appointments</td><td>Weekly doctor schedule editor with configurable slot length, live slot availability (60-second Redis cache), booking by patient or reception, emergency bookings, status lifecycle PENDING → CONFIRMED → IN_PROGRESS → COMPLETED / CANCELLED / NO_SHOW, database-enforced double-booking protection for doctors and patients, 24 h and 1 h reminders.</td><td class="ok">Complete</td></tr>
+  <tr><td>Electronic Medical Records</td><td>Append-only encounters with vitals and auto-BMI, chief complaint, ICD-10 diagnosis, treatment plan, allergies, vaccination history, family-history flags and secure file attachments (PDF/images, 20 MB, private cloud storage with expiring links). Diagnosis and notes encrypted at rest.</td><td class="ok">Complete</td></tr>
+  <tr><td>Nurse station</td><td>Triage queue, vital-sign recording with trend charts and abnormal-value highlighting; the doctor's consultation form pre-fills from today's triage.</td><td class="ok">Complete</td></tr>
+  <tr><td>Prescriptions</td><td>Medicine search from live pharmacy stock, dosage / frequency (OD, BD, TDS, QID, SOS) / duration per item, professional PDF with hospital letterhead and doctor signature.</td><td class="ok">Complete</td></tr>
+  <tr><td>Laboratory</td><td>Test catalogue with gender-specific reference ranges; order → sample collected → processing → results → approval workflow; automatic abnormal flags; PDF reports visible to doctor and patient after approval.</td><td class="ok">Complete</td></tr>
+  <tr><td>Pharmacy</td><td>Inventory with batches (batch no., mfg / expiry, cost, MRP), receive stock, FIFO dispensing by earliest expiry, expired-stock quarantine, low-stock and nightly 30-day expiry alerts.</td><td class="ok">Complete</td></tr>
+  <tr><td>Wards &amp; beds</td><td>Rooms with individual beds per department; admit a patient to a specific bed, one-step transfer to another bed (e.g. ward → ICU), discharge to cleaning, mark ready, take out of service; live occupancy KPIs and department occupancy heat map.</td><td class="ok">Complete</td></tr>
+  <tr><td>Billing &amp; payments</td><td>One invoice per visit aggregating consultation, lab and pharmacy charges; finalise, collect cash / card / UPI at the counter or pay online through Razorpay with server-side signature verification and webhooks; partial payments; receipts.</td><td class="ok">Complete</td></tr>
+  <tr><td>Insurance / TPA</td><td>Cashless pre-authorisation of estimated treatment cost before admission (approve / partial / reject with validity date); claims against unpaid invoices linked to the pre-authorisation, insurer review, settlement posted directly on the invoice; patients notified and able to track claims.</td><td class="ok">Complete</td></tr>
+  <tr><td>Notifications</td><td>Real-time in-app notifications over Socket.IO, email and SMS channels via BullMQ fan-out workers for confirmations, reminders, lab reports, prescriptions, invoices, payments, low stock and emergencies.</td><td class="ok">Complete</td></tr>
+  <tr><td>Analytics &amp; search</td><td>Role-specific dashboards with Recharts (revenue trend, appointment volume, patient growth, department load, bed occupancy), finance view with CSV export, global search across patients, doctors, medicines and appointments.</td><td class="ok">Complete</td></tr>
+  <tr><td>Patient portal</td><td>Book appointments, view medical records, vitals trends, vaccinations, lab reports and prescriptions, download PDFs, pay bills online and follow insurance claims.</td><td class="ok">Complete</td></tr>
+  <tr><td>Audit &amp; settings</td><td>Audit-log viewer of every create / update / delete (user, IP, time, redacted request); profile editing and phone verification for every user.</td><td class="ok">Complete</td></tr>
+  <tr><td>UI / UX</td><td>Professional landing page, split-screen sign-in with one-click demo accounts, responsive layout with mobile navigation, loading / empty / error states throughout.</td><td class="ok">Complete</td></tr>
+</table>
+
+<h2 class="page-break">4. Architecture &amp; key design decisions</h2>
+<ul>
+  <li><b>Row-level multi-tenancy:</b> every hospital-owned table carries <code>hospitalId</code>; a Tenant guard pins each request to the caller's hospital and services re-check ownership, so guessing another hospital's record ID returns 403.</li>
+  <li><b>Request pipeline:</b> Helmet → rate limiting → strict CORS → JWT guard → Roles guard → Tenant guard → validation → service → Prisma; responses use one envelope <code>{ success, data, meta }</code> / <code>{ success:false, error:{ code, message } }</code>.</li>
+  <li><b>Concurrency:</b> partial unique indexes guarantee that only one of two simultaneous bookings for a slot succeeds (409 for the other) — safe across multiple API instances without row locks.</li>
+  <li><b>Caching:</b> Redis stores refresh tokens per device (<code>rt:{userId}:{deviceId}</code>), doctor availability for 60 s with invalidation on every booking, reminder de-duplication and BullMQ queues.</li>
+  <li><b>Data model:</b> 34 Prisma models normalised to 3NF with 8 migrations — weekly schedule templates, prescription line items, structured lab results with reference ranges, medicine batches, individual beds, pre-authorisations, insurance claims, vital signs, vaccinations and an audit log. Soft deletes on patients, doctors and appointments.</li>
+  <li><b>Deployment:</b> Next.js frontend on Vercel rewrites <code>/api</code> to the NestJS API on Railway (same origin, no CORS for REST); WebSockets connect directly. The API container runs database migrations on start-up. Docker Compose + Nginx reproduce the stack locally.</li>
+</ul>
+
+<h2>5. Security</h2>
+<div class="two">
+  <div class="box">
+    <ul>
+      <li>bcrypt (cost 12) password hashing</li>
+      <li>256-bit JWT secrets; refresh-token rotation with replay rejection</li>
+      <li>100 req / 15 min on auth routes, 1000 req / 15 min on the API</li>
+      <li>Helmet headers, strict CORS allow-list, HTTPS everywhere</li>
+      <li>SameSite=Strict httpOnly refresh cookie; Bearer tokens for writes</li>
+    </ul>
+  </div>
+  <div class="box">
+    <ul>
+      <li>AES-256-GCM encryption of diagnosis, notes and treatment plans</li>
+      <li>Audit log for every write with redacted request bodies</li>
+      <li>Log sanitiser — passwords, tokens and OTPs never logged</li>
+      <li>Upload allow-list, magic-byte checks, private storage, signed URLs</li>
+      <li>Ownership checks on users, schedules, stock, records and claims</li>
+    </ul>
+  </div>
+</div>
+
+<h2>6. Testing &amp; quality</h2>
+<table>
+  <tr><th style="width:26%">Suite</th><th>Coverage</th></tr>
+  <tr><td>API integration (Jest + Supertest)</td><td>52 tests in 10 suites against a real PostgreSQL database: tenancy isolation, patient data isolation, simultaneous-booking race, refresh-token replay, expired-stock dispensing, invoice arithmetic, Razorpay webhook signatures, lab / prescription / admin / onboarding / auth workflows, vitals, bed admission and transfer, pre-authorisation, insurance claims, audit log and encryption at rest. Backend line coverage 77%.</td></tr>
+  <tr><td>UI components (Vitest + Testing Library)</td><td>25 tests: login validation and demo accounts, vitals form, pre-authorisation and claim forms, role-based navigation, family-history toggles and shared components.</td></tr>
+  <tr><td>Browser end-to-end (Playwright)</td><td>13 journeys on desktop and mobile: sign-in and validation, forgot password, admin KPIs and audit log, doctor chart, pharmacist inventory, patient records and bills, nurse vitals, admit → transfer → discharge, claim review and filing, mobile navigation.</td></tr>
+  <tr><td>Continuous integration</td><td>GitHub Actions runs typechecks, all three test suites (the browser suite against a freshly migrated and seeded stack) and a production build on every push.</td></tr>
+  <tr><td>Live smoke test</td><td>Checks the deployed chain end to end: landing page, API proxy, logins, dashboards, invoices, Razorpay order, forged-signature rejection, lab and prescription PDFs — 12 / 12 passing.</td></tr>
+</table>
+
+<h2>7. Documentation in the repository</h2>
+<ul>
+  <li><code>README.md</code> — setup, demo credentials, feature list and deployment guide</li>
+  <li><code>docs/ARCHITECTURE.md</code> — component and request-flow diagrams, design decisions</li>
+  <li><code>docs/ER_DIAGRAM.md</code> — full entity-relationship diagram generated from the Prisma schema</li>
+  <li><code>docs/PERMISSIONS_MATRIX.md</code> — all 98 endpoints × 9 roles, generated from the code</li>
+  <li><code>docs/PROJECT_REPORT.md</code> — technical decisions, challenges and lessons learned</li>
+  <li><code>docs/coverage/</code> — HTML test-coverage report; Swagger UI live at <code>/api/docs</code></li>
+</ul>
+
+<h2>8. Demo credentials</h2>
+<p class="small">All data is fictional. The sign-in page also has one-click buttons for each role.</p>
+<table>
+  <tr><th>Role</th><th>Email</th><th>Password</th></tr>
+  <tr><td>Hospital Admin</td><td>admin@medcore.com</td><td>Admin@123</td></tr>
+  <tr><td>Doctor</td><td>dr.rajesh.sharma@medcore.com</td><td>Doctor@123</td></tr>
+  <tr><td>Nurse</td><td>nurse@medcore.com</td><td>Nurse@123</td></tr>
+  <tr><td>Receptionist</td><td>reception@medcore.com</td><td>Reception@123</td></tr>
+  <tr><td>Lab Technician</td><td>labtech@medcore.com</td><td>LabTech@123</td></tr>
+  <tr><td>Pharmacist</td><td>pharmacist@medcore.com</td><td>Pharma@123</td></tr>
+  <tr><td>Accountant</td><td>accountant@medcore.com</td><td>Accountant@123</td></tr>
+  <tr><td>Patient</td><td>rahul.verma@email.com</td><td>Patient@123</td></tr>
+  <tr><td>Super Admin</td><td>superadmin@medcore.com</td><td>SuperAdmin@123</td></tr>
+</table>
+
+</body>
+</html>

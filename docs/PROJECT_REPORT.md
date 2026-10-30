@@ -22,7 +22,7 @@ The system is a pnpm monorepo:
 - `packages/types` — enums and API types shared by both apps.
 
 It is deployed with the frontend on Vercel and the API, database and Redis on Railway, with
-medical-record files in Google Cloud Storage. 51 integration tests run against a real
+medical-record files in Google Cloud Storage. 52 integration tests run against a real
 Postgres database in CI and cover 74% of backend lines.
 
 ## 2. Requirements coverage
@@ -131,7 +131,8 @@ sends a 6-digit email OTP, and signed-in users can verify their phone by SMS OTP
 
 A claim is its own entity rather than a payment method, because insurers take days to decide and
 often pay less than claimed. The claim records what was asked, what the insurer approved and why, and
-only the settlement step touches money: it reuses the normal invoice payment path with method
+only the settlement step touches money. Cashless pre-authorisation follows the same review states but
+before treatment, and the approved request is linked to the final claim. The settlement step it reuses the normal invoice payment path with method
 `INSURANCE`, so totals, partial-payment status and receipts behave exactly like any other payment.
 Beds are rows, not counters, so the system knows which patient is in which bed; a unique index on
 `patientId` makes double admission impossible even under concurrent clicks, and the room's occupancy
@@ -149,8 +150,9 @@ Razorpay already covers cards, UPI and netbanking for the Indian market.
 
 | Layer | Tooling | What is covered |
 | --- | --- | --- |
-| Integration (API) | Jest + Supertest against a real Postgres + Redis | 51 tests in 10 suites |
-| Component (UI) | Vitest + Testing Library | 23 tests: forms, modals, role navigation, shared components |
+| Integration (API) | Jest + Supertest against a real Postgres + Redis | 52 tests in 10 suites |
+| Component (UI) | Vitest + Testing Library | 25 tests: forms, modals, role navigation, shared components |
+| Browser E2E | Playwright (desktop + mobile) | 13 journeys across admin, doctor, nurse, pharmacist, accountant, reception and patient, run in CI on a seeded stack |
 | Live smoke | `scripts/smoke.mjs` against Vercel → Railway | 12 checks: landing, proxy, logins, dashboards, invoices, Razorpay order, forged signature, lab and prescription PDFs |
 
 All six mandatory scenarios from the brief are automated:
@@ -168,9 +170,7 @@ rest and the Razorpay webhook. Backend coverage is **76% of lines, 72% of statem
 functions** (HTML report in `docs/coverage/`). Branch coverage (43%) is the weakest number,
 mostly defensive error branches in PDF rendering and job processors.
 
-Browser end-to-end tests (Playwright) were not written; the component tests, the live smoke script and
-the API suites cover the same journeys at the UI-component and HTTP levels, and every role was walked
-through manually in a browser before release.
+Thirteen Playwright journeys drive a real browser through sign-in and the main workflows of every role, on desktop and mobile; CI boots the full stack, seeds it and runs them on every push.
 
 ## 6. Deployment and operations
 
@@ -222,9 +222,8 @@ file plus env vars run unchanged on an EC2 instance if needed.
 
 ## 9. Known limitations and next steps
 
-- Playwright browser journeys.
-- Pre-authorisation requests to insurers before admission (claims are filed after billing).
-- Bed transfers between rooms in one step (today: discharge, then admit).
+- Electronic submission of claims to insurers' own portals (today the insurer's decision is recorded by accounts staff).
+- Bed reservations for planned admissions.
 - Doctor signature as an uploaded image (currently a rendered signature block).
 - Google OAuth and Stripe, if the product expands beyond India.
 

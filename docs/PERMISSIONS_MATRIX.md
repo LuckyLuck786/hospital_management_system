@@ -43,6 +43,9 @@ A ✓ for every role means any signed-in user passes the guard. Services then ap
 | `POST /api/hospitals` | ✓ |  |  |  |  |  |  |  |  |
 | `PATCH /api/hospitals/:id` | ✓ | ✓ |  |  |  |  |  |  |  |
 | `GET /api/insurance-claims` | ✓ | ✓ |  |  | ✓ |  |  | ✓ | ✓ |
+| `GET /api/insurance-claims/pre-auth` | ✓ | ✓ | ✓ |  | ✓ |  |  | ✓ | ✓ |
+| `POST /api/insurance-claims/pre-auth` |  | ✓ | ✓ |  | ✓ |  |  | ✓ |  |
+| `PATCH /api/insurance-claims/pre-auth/:id/status` |  | ✓ |  |  |  |  |  | ✓ |  |
 | `POST /api/insurance-claims` |  | ✓ |  |  | ✓ |  |  | ✓ |  |
 | `PATCH /api/insurance-claims/:id/status` |  | ✓ |  |  |  |  |  | ✓ |  |
 | `POST /api/insurance-claims/:id/settle` |  | ✓ |  |  |  |  |  | ✓ |  |
@@ -100,5 +103,6 @@ A ✓ for every role means any signed-in user passes the guard. Services then ap
 | `GET /api/wards/admissions` | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |
 | `POST /api/wards/rooms` | ✓ | ✓ |  |  |  |  |  |  |  |
 | `POST /api/wards/beds/:id/admit` | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |
+| `POST /api/wards/beds/:id/transfer` | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |
 | `POST /api/wards/beds/:id/discharge` | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |
 | `PATCH /api/wards/beds/:id/status` | ✓ | ✓ |  | ✓ |  |  |  |  |  |
