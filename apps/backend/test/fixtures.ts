@@ -38,6 +38,7 @@ export async function resetDb() {
   await prisma.$transaction([
     prisma.auditLog.deleteMany(),
     prisma.insuranceClaim.deleteMany(),
+    prisma.preAuthorization.deleteMany(),
     prisma.bed.deleteMany(),
     prisma.vaccination.deleteMany(),
     prisma.vitalSign.deleteMany(),

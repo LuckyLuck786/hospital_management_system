@@ -110,4 +110,43 @@ describe('Insurance / TPA claims (e2e)', () => {
     const accList = await request(app.getHttpServer()).get('/api/insurance-claims').set(auth(accountant));
     expect(accList.body.meta).toMatchObject({ total: 2, settled: 300 });
   });
+
+  it('runs cashless pre-authorisation and links the approval to a claim', async () => {
+    const doctorA = await loginAs(app, 'doc.a@test.local');
+    const bad = await request(app.getHttpServer()).post('/api/insurance-claims/pre-auth').set(auth(doctorA)).send({ patientId: f.patientA, treatment: 'x', estimatedAmount: 0 });
+    expect(bad.status).toBe(400);
+
+    const pa = await request(app.getHttpServer())
+      .post('/api/insurance-claims/pre-auth')
+      .set(auth(doctorA))
+      .send({ patientId: f.patientA, treatment: 'Laparoscopic appendectomy, 2-day stay', estimatedAmount: 60000 });
+    expect(pa.status).toBe(201);
+    expect(pa.body.data.requestNumber).toMatch(/^PA-/);
+    expect(pa.body.data.insurer).toBe('Star Health'); // taken from the patient's stored policy
+    const id = pa.body.data.id;
+
+    // a claim cannot use a request the insurer has not approved yet
+    const early = await request(app.getHttpServer()).post('/api/insurance-claims').set(auth(reception)).send({ invoiceId, preAuthorizationId: id });
+    expect(early.status).toBe(400);
+
+    expect((await request(app.getHttpServer()).patch(`/api/insurance-claims/pre-auth/${id}/status`).set(auth(doctorA)).send({ status: 'UNDER_REVIEW' })).status).toBe(403);
+    expect((await request(app.getHttpServer()).patch(`/api/insurance-claims/pre-auth/${id}/status`).set(auth(accountant)).send({ status: 'UNDER_REVIEW' })).status).toBe(200);
+    const approved = await request(app.getHttpServer())
+      .patch(`/api/insurance-claims/pre-auth/${id}/status`)
+      .set(auth(accountant))
+      .send({ status: 'PARTIALLY_APPROVED', approvedAmount: 50000, decisionNote: 'Room category capped', validDays: 15 });
+    expect(approved.status).toBe(200);
+    expect(Number(approved.body.data.approvedAmount)).toBe(50000);
+    expect(approved.body.data.validUntil).toBeTruthy();
+
+    const claim = await request(app.getHttpServer()).post('/api/insurance-claims').set(auth(reception)).send({ invoiceId, preAuthorizationId: id });
+    expect(claim.status).toBe(201);
+    expect(claim.body.data.preAuthorization.requestNumber).toBe(pa.body.data.requestNumber);
+
+    const patientA = await loginAs(app, 'pat.a@test.local');
+    const mine = await request(app.getHttpServer()).get('/api/insurance-claims/pre-auth').set(auth(patientA));
+    expect(mine.body.data).toHaveLength(1);
+    const patientB = await loginAs(app, 'pat.b@test.local');
+    expect((await request(app.getHttpServer()).get('/api/insurance-claims/pre-auth').set(auth(patientB))).body.data).toHaveLength(0);
+  });
 });

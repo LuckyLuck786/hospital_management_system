@@ -95,6 +95,23 @@ describe('User account authorization, wards and vitals (e2e)', () => {
     const admissions = await request(app.getHttpServer()).get('/api/wards/admissions').set(auth(nurseA));
     expect(admissions.body.data).toHaveLength(1);
 
+    // one-step transfer: patient moves to bed 2, bed 1 goes to cleaning
+    const bed3 = room.body.data.beds[2];
+    const moved = await request(app.getHttpServer())
+      .post(`/api/wards/beds/${bed1.id}/transfer`)
+      .set(auth(nurseA))
+      .send({ toBedId: bed3.id, reason: 'Needs window bed' });
+    expect(moved.status).toBe(201);
+    expect(moved.body.data.patient.id).toBe(f.patientA);
+    expect(moved.body.data.admissionNotes).toContain('Transferred from');
+    const oldBed = await prisma.bed.findUnique({ where: { id: bed1.id } });
+    expect(oldBed).toMatchObject({ status: 'CLEANING', patientId: null });
+    const intoBusy = await request(app.getHttpServer()).post(`/api/wards/beds/${bed3.id}/transfer`).set(auth(nurseA)).send({ toBedId: bed1.id });
+    expect(intoBusy.status).toBe(409); // bed 1 is still being cleaned
+    await request(app.getHttpServer()).patch(`/api/wards/beds/${bed1.id}/status`).set(auth(nurseA)).send({ status: 'AVAILABLE' });
+    const back = await request(app.getHttpServer()).post(`/api/wards/beds/${bed3.id}/transfer`).set(auth(nurseA)).send({ toBedId: bed1.id });
+    expect(back.status).toBe(201);
+
     const discharge = await request(app.getHttpServer()).post(`/api/wards/beds/${bed1.id}/discharge`).set(auth(nurseA));
     expect(discharge.status).toBe(201);
     expect(discharge.body.data.status).toBe('CLEANING');

@@ -19,6 +19,27 @@ export class InsuranceController {
     return this.insurance.list(hospitalId, user, status);
   }
 
+  @Get('pre-auth')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN, UserRole.ACCOUNTANT, UserRole.RECEPTIONIST, UserRole.DOCTOR, UserRole.PATIENT)
+  @ApiOperation({ summary: 'Cashless pre-authorisation requests (patients see their own)' })
+  async listPreAuths(@TenantId() hospitalId: string, @CurrentUser() user: any, @Query('status') status?: string) {
+    return this.insurance.listPreAuths(hospitalId, user, status);
+  }
+
+  @Post('pre-auth')
+  @Roles(UserRole.HOSPITAL_ADMIN, UserRole.ACCOUNTANT, UserRole.RECEPTIONIST, UserRole.DOCTOR)
+  @ApiOperation({ summary: 'Request cashless pre-authorisation for planned treatment' })
+  async createPreAuth(@TenantId() hospitalId: string, @CurrentUser() user: any, @Body() data: any) {
+    return this.insurance.createPreAuth(hospitalId, user, data);
+  }
+
+  @Patch('pre-auth/:id/status')
+  @Roles(UserRole.HOSPITAL_ADMIN, UserRole.ACCOUNTANT)
+  @ApiOperation({ summary: 'Record the insurer decision on a pre-authorisation' })
+  async updatePreAuth(@Param('id') id: string, @CurrentUser() user: any, @Body() data: any) {
+    return this.insurance.updatePreAuth(id, user, data);
+  }
+
   @Post()
   @Roles(UserRole.HOSPITAL_ADMIN, UserRole.ACCOUNTANT, UserRole.RECEPTIONIST)
   @ApiOperation({ summary: 'File a claim against an unpaid invoice' })

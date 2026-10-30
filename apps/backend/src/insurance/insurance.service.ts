@@ -13,6 +13,7 @@ const NEXT: Partial<Record<ClaimStatus, ClaimStatus[]>> = {
 };
 
 const INCLUDE = {
+  preAuthorization: { select: { id: true, requestNumber: true, approvedAmount: true } },
   invoice: { select: { id: true, invoiceNumber: true, totalAmount: true, paidAmount: true, balanceAmount: true, status: true } },
   patient: { select: { id: true, patientId: true, user: { select: { firstName: true, lastName: true } } } },
 } as const;
@@ -56,8 +57,16 @@ export class InsuranceService {
     if (open) throw new ConflictException(`Claim ${open.claimNumber} is already open for this invoice`);
 
     const patient = await this.prisma.patient.findUnique({ where: { id: invoice.patientId } });
-    const insurer = String(data.insurer || patient?.insuranceProvider || '').trim();
-    const policyNumber = String(data.policyNumber || patient?.insurancePolicyNumber || '').trim();
+    let preAuth: any = null;
+    if (data.preAuthorizationId) {
+      preAuth = await this.prisma.preAuthorization.findUnique({ where: { id: data.preAuthorizationId } });
+      if (!preAuth || preAuth.patientId !== invoice.patientId) throw new BadRequestException('Pre-authorisation does not belong to this patient');
+      if (preAuth.status !== ClaimStatus.APPROVED && preAuth.status !== ClaimStatus.PARTIALLY_APPROVED) {
+        throw new BadRequestException('Only an approved pre-authorisation can be linked');
+      }
+    }
+    const insurer = String(data.insurer || preAuth?.insurer || patient?.insuranceProvider || '').trim();
+    const policyNumber = String(data.policyNumber || preAuth?.policyNumber || patient?.insurancePolicyNumber || '').trim();
     if (!insurer || !policyNumber) throw new BadRequestException('Insurer and policy number are required');
 
     const balance = Number(invoice.balanceAmount);
@@ -74,8 +83,9 @@ export class InsuranceService {
         invoiceId: invoice.id,
         patientId: invoice.patientId,
         insurer,
-        tpaName: data.tpaName ? String(data.tpaName) : null,
+        tpaName: data.tpaName ? String(data.tpaName) : preAuth?.tpaName ?? null,
         policyNumber,
+        preAuthorizationId: preAuth?.id ?? null,
         claimedAmount,
         notes: data.notes || null,
         submittedById: user.id,
@@ -157,5 +167,96 @@ export class InsuranceService {
         .catch(() => undefined);
     }
     return settled;
+  }
+
+  /* ------------------------------------------------------------ Pre-authorisation */
+
+  async listPreAuths(hospitalId: string | undefined, user: any, status?: string) {
+    const where: any = {};
+    if (user.role !== UserRole.SUPER_ADMIN) where.hospitalId = hospitalId;
+    if (status) where.status = status;
+    if (user.role === UserRole.PATIENT) {
+      const patient = await this.prisma.patient.findUnique({ where: { userId: user.id } });
+      where.patientId = patient?.id ?? '__none__';
+    }
+    return this.prisma.preAuthorization.findMany({
+      where,
+      include: { patient: INCLUDE.patient, claims: { select: { id: true, claimNumber: true, status: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  async createPreAuth(hospitalId: string, user: any, data: any) {
+    const patient = await this.prisma.patient.findFirst({ where: { id: data?.patientId, deletedAt: null } });
+    if (!patient || (user.role !== UserRole.SUPER_ADMIN && patient.hospitalId !== hospitalId)) throw new NotFoundException('Patient not found');
+    const insurer = String(data.insurer || patient.insuranceProvider || '').trim();
+    const policyNumber = String(data.policyNumber || patient.insurancePolicyNumber || '').trim();
+    if (!insurer || !policyNumber) throw new BadRequestException('Insurer and policy number are required');
+    const treatment = String(data.treatment || '').trim();
+    if (treatment.length < 5) throw new BadRequestException('Describe the planned treatment');
+    const estimatedAmount = Number(data.estimatedAmount);
+    if (!(estimatedAmount > 0)) throw new BadRequestException('Estimated amount must be greater than zero');
+
+    const count = await this.prisma.preAuthorization.count();
+    const pa = await this.prisma.preAuthorization.create({
+      data: {
+        requestNumber: `PA-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`,
+        hospitalId: patient.hospitalId,
+        patientId: patient.id,
+        insurer,
+        tpaName: data.tpaName ? String(data.tpaName) : null,
+        policyNumber,
+        treatment,
+        estimatedAmount,
+        requestedById: user.id,
+      },
+      include: { patient: INCLUDE.patient },
+    });
+    if (!patient.insuranceProvider || !patient.insurancePolicyNumber) {
+      await this.prisma.patient.update({ where: { id: patient.id }, data: { insuranceProvider: insurer, insurancePolicyNumber: policyNumber } });
+    }
+    return pa;
+  }
+
+  async updatePreAuth(id: string, user: any, data: { status: ClaimStatus; approvedAmount?: number; decisionNote?: string; validDays?: number }) {
+    const pa = await this.prisma.preAuthorization.findUnique({ where: { id } });
+    if (!pa) throw new NotFoundException('Pre-authorisation not found');
+    if (user.role !== UserRole.SUPER_ADMIN && pa.hospitalId !== user.hospitalId) throw new ForbiddenException('Access denied');
+    if (!NEXT[pa.status]?.includes(data.status)) throw new BadRequestException(`Cannot move a ${pa.status} request to ${data.status}`);
+
+    const update: any = { status: data.status, reviewedById: user.id, decisionNote: data.decisionNote ?? pa.decisionNote };
+    const validUntil = new Date(Date.now() + (Number(data.validDays) || 30) * 24 * 3600 * 1000);
+    if (data.status === ClaimStatus.APPROVED) Object.assign(update, { approvedAmount: pa.estimatedAmount, decidedAt: new Date(), validUntil });
+    if (data.status === ClaimStatus.PARTIALLY_APPROVED) {
+      const amt = Number(data.approvedAmount);
+      if (!(amt > 0) || amt >= Number(pa.estimatedAmount)) throw new BadRequestException('A partial approval must be more than 0 and less than the estimate');
+      Object.assign(update, { approvedAmount: amt, decidedAt: new Date(), validUntil });
+    }
+    if (data.status === ClaimStatus.REJECTED) {
+      if (!data.decisionNote) throw new BadRequestException('Give a reason for rejecting the request');
+      Object.assign(update, { approvedAmount: 0, decidedAt: new Date() });
+    }
+    const saved = await this.prisma.preAuthorization.update({ where: { id }, data: update, include: { patient: INCLUDE.patient } });
+
+    if (data.status !== ClaimStatus.UNDER_REVIEW) {
+      const p = await this.prisma.patient.findUnique({ where: { id: pa.patientId }, select: { userId: true } });
+      if (p) {
+        await this.notifications
+          .create({
+            userId: p.userId,
+            hospitalId: pa.hospitalId,
+            type: NotificationType.INVOICE_GENERATED,
+            title: `Pre-authorisation ${data.status === ClaimStatus.REJECTED ? 'declined' : 'approved'}`,
+            message:
+              data.status === ClaimStatus.REJECTED
+                ? `${pa.insurer} declined cashless request ${pa.requestNumber}: ${data.decisionNote}`
+                : `${pa.insurer} approved ₹${Number(saved.approvedAmount).toLocaleString('en-IN')} for ${pa.treatment} (request ${pa.requestNumber}).`,
+            channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.SMS],
+          })
+          .catch(() => undefined);
+      }
+    }
+    return saved;
   }
 }

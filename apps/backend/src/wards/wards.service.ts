@@ -104,6 +104,35 @@ export class WardsService {
     }
   }
 
+  /**
+   * Move an admitted patient to another free bed in one transaction (e.g. ward → ICU).
+   * The old bed goes to CLEANING; admission time and notes travel with the patient.
+   */
+  async transfer(fromBedId: string, hospitalId: string, user: any, data: { toBedId?: string; reason?: string }) {
+    const from = await this.loadBed(fromBedId, hospitalId, user);
+    if (from.status !== BedStatus.OCCUPIED || !from.patientId) throw new BadRequestException('There is no patient in this bed');
+    if (!data?.toBedId) throw new BadRequestException('toBedId is required');
+    if (data.toBedId === fromBedId) throw new BadRequestException('Choose a different bed');
+    const to = await this.loadBed(data.toBedId, hospitalId, user);
+    if (to.hospitalId !== from.hospitalId) throw new ForbiddenException('Beds must be in the same hospital');
+
+    const notes = [from.admissionNotes, data.reason ? `Transferred from ${from.label}: ${data.reason}` : null].filter(Boolean).join(' · ') || null;
+    const moved = await this.prisma.$transaction(async (tx) => {
+      // Re-check inside the transaction so two nurses cannot fill the same bed
+      const target = await tx.bed.findUnique({ where: { id: to.id } });
+      if (!target || target.status !== BedStatus.AVAILABLE) throw new ConflictException('The target bed is no longer available');
+      await tx.bed.update({ where: { id: from.id }, data: { patientId: null, status: BedStatus.CLEANING, admittedAt: null, admissionNotes: null } });
+      return tx.bed.update({
+        where: { id: to.id },
+        data: { patientId: from.patientId, status: BedStatus.OCCUPIED, admittedAt: from.admittedAt ?? new Date(), admissionNotes: notes },
+        include: BED_INCLUDE,
+      });
+    });
+    await this.syncRoom(from.roomId);
+    if (to.roomId !== from.roomId) await this.syncRoom(to.roomId);
+    return moved;
+  }
+
   /** Discharge frees the patient; the bed goes to CLEANING until housekeeping marks it ready. */
   async discharge(bedId: string, hospitalId: string, user: any) {
     const bed = await this.loadBed(bedId, hospitalId, user);

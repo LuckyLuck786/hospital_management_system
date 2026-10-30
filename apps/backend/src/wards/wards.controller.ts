@@ -42,6 +42,13 @@ export class WardsController {
     return this.wards.admit(id, hospitalId, user, data);
   }
 
+  @Post('beds/:id/transfer')
+  @Roles(...WARD_STAFF)
+  @ApiOperation({ summary: 'Move the admitted patient to another free bed in one step' })
+  async transfer(@Param('id') id: string, @TenantId() hospitalId: string, @CurrentUser() user: any, @Body() data: any) {
+    return this.wards.transfer(id, hospitalId, user, data);
+  }
+
   @Post('beds/:id/discharge')
   @Roles(...WARD_STAFF)
   @ApiOperation({ summary: 'Discharge the patient; the bed moves to CLEANING' })

@@ -138,6 +138,7 @@ model Hospital {
   vitalSigns   VitalSign[]
   beds         Bed[]
   insuranceClaims InsuranceClaim[]
+  preAuthorizations PreAuthorization[]
 
   @@index([isActive])
   @@index([isVerified])
@@ -300,6 +301,7 @@ model Patient {
   vitalSigns     VitalSign[]
   bed            Bed?
   insuranceClaims InsuranceClaim[]
+  preAuthorizations PreAuthorization[]
 
   @@index([hospitalId])
   @@index([patientId])
@@ -952,6 +954,8 @@ model InsuranceClaim {
   invoice         Invoice     @relation(fields: [invoiceId], references: [id])
   patientId       String
   patient         Patient     @relation(fields: [patientId], references: [id])
+  preAuthorizationId String?
+  preAuthorization   PreAuthorization? @relation(fields: [preAuthorizationId], references: [id])
   insurer         String
   tpaName         String?
   policyNumber    String
@@ -970,4 +974,33 @@ model InsuranceClaim {
   @@index([hospitalId, status])
   @@index([invoiceId])
   @@map("insurance_claims")
+}
+
+/// Cashless pre-authorisation: the insurer approves an estimated amount before treatment / admission.
+model PreAuthorization {
+  id              String      @id @default(uuid())
+  requestNumber   String      @unique
+  hospitalId      String
+  hospital        Hospital    @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient     @relation(fields: [patientId], references: [id])
+  insurer         String
+  tpaName         String?
+  policyNumber    String
+  treatment       String      @db.Text
+  estimatedAmount Decimal     @db.Decimal(12, 2)
+  approvedAmount  Decimal?    @db.Decimal(12, 2)
+  status          ClaimStatus @default(SUBMITTED)
+  validUntil      DateTime?
+  decisionNote    String?     @db.Text
+  requestedById   String
+  reviewedById    String?
+  createdAt       DateTime    @default(now())
+  decidedAt       DateTime?
+  updatedAt       DateTime    @updatedAt
+  claims          InsuranceClaim[]
+
+  @@index([hospitalId, status])
+  @@index([patientId])
+  @@map("pre_authorizations")
 }
