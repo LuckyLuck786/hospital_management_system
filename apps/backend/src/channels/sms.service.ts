@@ -45,4 +45,31 @@ export class SmsService {
       return { delivered: false, reason: (err as Error).message };
     }
   }
+
+  /** Twilio Verify sends its own OTP template, which works even on restricted trial accounts. */
+  get verifyEnabled(): boolean {
+    return !!this.client && !!process.env.TWILIO_VERIFY_SERVICE_SID;
+  }
+
+  async startVerification(to: string): Promise<ChannelResult> {
+    if (!this.verifyEnabled) return { delivered: false, reason: 'Twilio Verify not configured' };
+    try {
+      await this.client!.verify.v2.services(process.env.TWILIO_VERIFY_SERVICE_SID!).verifications.create({ to, channel: 'sms' });
+      return { delivered: true };
+    } catch (err) {
+      this.logger.error(`Twilio Verify send failed: ${(err as Error).message}`);
+      return { delivered: false, reason: (err as Error).message };
+    }
+  }
+
+  async checkVerification(to: string, code: string): Promise<boolean> {
+    if (!this.verifyEnabled) return false;
+    try {
+      const res = await this.client!.verify.v2.services(process.env.TWILIO_VERIFY_SERVICE_SID!).verificationChecks.create({ to, code });
+      return res.status === 'approved';
+    } catch (err) {
+      this.logger.warn(`Twilio Verify check failed: ${(err as Error).message}`);
+      return false;
+    }
+  }
 }

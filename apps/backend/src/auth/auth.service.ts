@@ -222,6 +222,11 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('User not found');
     if (!user.phone) throw new BadRequestException('No phone number on file');
+    if (this.sms.verifyEnabled) {
+      const sent = await this.sms.startVerification(user.phone);
+      if (!sent.delivered) throw new BadRequestException(`Could not send the code: ${sent.reason}`);
+      return { message: 'Verification code sent' };
+    }
     const otp = this.generateOtp();
     await this.prisma.user.update({
       where: { id: user.id },
@@ -235,6 +240,11 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('User not found');
     if (user.isPhoneVerified) return { message: 'Phone already verified' };
+    if (this.sms.verifyEnabled && user.phone) {
+      if (!otp || !(await this.sms.checkVerification(user.phone, String(otp)))) throw new BadRequestException('Invalid or expired OTP');
+      await this.prisma.user.update({ where: { id: user.id }, data: { isPhoneVerified: true } });
+      return { message: 'Phone verified successfully' };
+    }
     if (!user.phoneOtp || user.phoneOtp !== otp || !user.phoneOtpExpiresAt || user.phoneOtpExpiresAt < new Date()) {
       throw new BadRequestException('Invalid or expired OTP');
     }
