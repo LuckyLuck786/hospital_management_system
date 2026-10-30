@@ -392,9 +392,26 @@ Use **test/development keys** first; never commit real secrets.
 `node dist/scripts/seed-extras.js` (or `npx ts-node src/scripts/seed-extras.ts`) adds wards, vitals and
 vaccinations to an existing database idempotently.
 
+## Phase 8 — Insurance/TPA claims, bed-level admissions & frontend tests (implemented)
+
+- **Insurance & TPA claims** (`/dashboard/insurance`, API `/insurance-claims`) — reception, accounts or admin file a
+  claim against an unpaid invoice (insurer, TPA, policy number pre-filled from the patient). Accounts move it through
+  `SUBMITTED → UNDER_REVIEW → APPROVED | PARTIALLY_APPROVED | REJECTED` (a rejection needs a reason) and **record the
+  settlement**, which posts an `INSURANCE` payment to the invoice; any remainder stays payable by the patient (cash,
+  counter or Razorpay). One open claim per invoice, amounts capped at the balance, tenant-scoped, and patients see
+  their own claims on *My Bills*.
+- **Individual beds** — every room now has numbered beds (`Bed` model; existing rooms were back-filled by the
+  migration). Nurses, reception and admins click a free bed to **admit a patient** (search by name/phone), click an
+  occupied bed to **discharge** (bed moves to *Cleaning*), then mark it ready; beds can also be taken out of service.
+  A patient can hold only one bed (unique constraint + 409), and the patient chart shows where they are admitted.
+- **Frontend component tests** — Vitest + Testing Library (`apps/frontend/__tests__`, 23 tests): login validation,
+  demo-account fill and unverified-email path, vitals modal (BMI preview, submit, error), claim form (pre-fill,
+  submit, server error), per-role sidebar links, family-history toggles, shared UI components and helpers. Run with
+  `pnpm --filter ./apps/frontend test`; they run in CI too.
+
 ### Tests & coverage
 
-48 integration tests in 9 suites (`apps/backend/test`) cover every PRD mandatory scenario
+51 integration tests in 10 suites (plus 23 frontend component tests) (`apps/backend/test`) cover every PRD mandatory scenario
 plus the lab, prescription, admin, onboarding, auth, vaccination, audit and encryption flows.
 
 ```bash
@@ -403,7 +420,7 @@ cd apps/backend && npx jest --config ./test/jest-e2e.json --runInBand --coverage
 ```
 
 Current coverage (backend `src/`, excluding module wiring): **76% lines, 72% statements,
-78% functions**. A snapshot of the HTML report is committed in `docs/coverage/`.
+79% functions**. A snapshot of the HTML report is committed in `docs/coverage/`.
 
 ### Documentation
 

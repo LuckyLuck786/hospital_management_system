@@ -42,6 +42,10 @@ A ✓ for every role means any signed-in user passes the guard. Services then ap
 | `GET /api/hospitals/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/hospitals` | ✓ |  |  |  |  |  |  |  |  |
 | `PATCH /api/hospitals/:id` | ✓ | ✓ |  |  |  |  |  |  |  |
+| `GET /api/insurance-claims` | ✓ | ✓ |  |  | ✓ |  |  | ✓ | ✓ |
+| `POST /api/insurance-claims` |  | ✓ |  |  | ✓ |  |  | ✓ |  |
+| `PATCH /api/insurance-claims/:id/status` |  | ✓ |  |  |  |  |  | ✓ |  |
+| `POST /api/insurance-claims/:id/settle` |  | ✓ |  |  |  |  |  | ✓ |  |
 | `GET /api/invoices` | ✓ | ✓ |  |  | ✓ |  |  | ✓ | ✓ |
 | `GET /api/invoices/:id` | ✓ | ✓ |  |  | ✓ |  |  | ✓ | ✓ |
 | `PATCH /api/invoices/:id/finalize` | ✓ | ✓ |  |  | ✓ |  |  | ✓ |  |
@@ -93,5 +97,8 @@ A ✓ for every role means any signed-in user passes the guard. Services then ap
 | `PATCH /api/users/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `DELETE /api/users/:id` | ✓ | ✓ |  |  |  |  |  |  |  |
 | `GET /api/wards` | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |
+| `GET /api/wards/admissions` | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |
 | `POST /api/wards/rooms` | ✓ | ✓ |  |  |  |  |  |  |  |
-| `PATCH /api/wards/rooms/:id/occupancy` | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `POST /api/wards/beds/:id/admit` | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |
+| `POST /api/wards/beds/:id/discharge` | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |
+| `PATCH /api/wards/beds/:id/status` | ✓ | ✓ |  | ✓ |  |  |  |  |  |

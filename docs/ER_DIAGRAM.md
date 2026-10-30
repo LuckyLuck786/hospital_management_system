@@ -1,6 +1,6 @@
 # MedCore HMS — ER Diagram
 
-Generated from `apps/backend/prisma/schema.prisma` by `scripts/gen-docs.py`. 31 models, 10 enums. Renders on GitHub.
+Generated from `apps/backend/prisma/schema.prisma` by `scripts/gen-docs.py`. 33 models, 12 enums. Renders on GitHub.
 
 ```mermaid
 erDiagram
@@ -461,6 +461,39 @@ erDiagram
     String recordedById FK
     DateTime recordedAt
   }
+  Bed {
+    String id PK
+    String hospitalId FK
+    String roomId FK
+    String label
+    enum_BedStatus status
+    String patientId FK
+    DateTime admittedAt
+    String admissionNotes
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  InsuranceClaim {
+    String id PK
+    String claimNumber
+    String hospitalId FK
+    String invoiceId FK
+    String patientId FK
+    String insurer
+    String tpaName
+    String policyNumber
+    Decimal claimedAmount
+    Decimal approvedAmount
+    enum_ClaimStatus status
+    String notes
+    String decisionNote
+    String submittedById FK
+    String reviewedById FK
+    DateTime submittedAt
+    DateTime decidedAt
+    DateTime settledAt
+    DateTime updatedAt
+  }
   Appointment |o--o{ Invoice : "appointment"
   Appointment |o--o{ Notification : "appointment"
   Appointment ||--o{ MedicalRecord : "appointment"
@@ -475,8 +508,10 @@ erDiagram
   Hospital |o--o{ Notification : "hospital"
   Hospital |o--o{ User : "hospital"
   Hospital ||--o{ Appointment : "hospital"
+  Hospital ||--o{ Bed : "hospital"
   Hospital ||--o{ Department : "hospital"
   Hospital ||--o{ Doctor : "hospital"
+  Hospital ||--o{ InsuranceClaim : "hospital"
   Hospital ||--o{ Invoice : "hospital"
   Hospital ||--o{ LabOrder : "hospital"
   Hospital ||--o{ LabTestCatalog : "hospital"
@@ -487,6 +522,7 @@ erDiagram
   Hospital ||--o{ Room : "hospital"
   Hospital ||--o{ Vaccination : "hospital"
   Hospital ||--o{ VitalSign : "hospital"
+  Invoice ||--o{ InsuranceClaim : "invoice"
   Invoice ||--o{ InvoiceItem : "invoice"
   Invoice ||--o{ Payment : "invoice"
   LabOrder ||--o{ LabResult : "labOrder"
@@ -497,7 +533,9 @@ erDiagram
   MedicalRecord ||--o{ Prescription : "medicalRecord"
   Medicine ||--o{ MedicineBatch : "medicine"
   Medicine ||--o{ PrescriptionItem : "medicine"
+  Patient |o--o{ Bed : "patient"
   Patient ||--o{ Appointment : "patient"
+  Patient ||--o{ InsuranceClaim : "patient"
   Patient ||--o{ Invoice : "patient"
   Patient ||--o{ LabOrder : "patient"
   Patient ||--o{ MedicalRecord : "patient"
@@ -505,6 +543,7 @@ erDiagram
   Patient ||--o{ Vaccination : "patient"
   Patient ||--o{ VitalSign : "patient"
   Prescription ||--o{ PrescriptionItem : "prescription"
+  Room ||--o{ Bed : "room"
   User |o--o{ Address : "user"
   User |o--o{ AuditLog : "user"
   User |o--o{ Invoice : "createdBy"
